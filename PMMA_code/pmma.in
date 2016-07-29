@@ -1,0 +1,35 @@
+# LAMMPS input file for simulating PMMA with water/methanol
+clear
+units              si
+dimension          3
+boundary           p p p
+atom_style         molecular
+
+variable           filename index pmma.data
+variable           T equal 300
+variable           Seed equal 1234
+variable           R equal 8.14e-10
+variable           Nsteps equal 3e4
+variable           timestep equal 2e-13
+
+comm_modify        vel yes
+neighbor           3e-9 bin
+neigh_modify       one 5000
+                  
+pair_style         dpd ${T} ${R} ${Seed}
+bond_style         harmonic
+read_data          ${filename}
+
+shell              mkdir Dump
+shell              cd Dump
+dump               my_dump all xyz 100 dump_*.xyz
+thermo             100
+
+minimize           1.0e-10 1.0e-10 10000 10000           # energy tol, force tol, maxiter, maxeval
+velocity           all create ${T} ${Seed}
+reset_timestep     0
+timestep           ${timestep}
+fix                1 all nve
+run                ${Nsteps}
+                   
+print              "All done."
