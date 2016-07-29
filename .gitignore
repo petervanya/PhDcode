@@ -1,0 +1,12 @@
+TODO.md
+DLMS_bin/
+Private/
+CONFIG
+FIELD
+DPD_code/CONFIG
+DPD_code/FIELD
+Lib/Fcore/*so
+*/input.yaml
+*/CONTROL
+*/CONFIG
+*/FIELD
