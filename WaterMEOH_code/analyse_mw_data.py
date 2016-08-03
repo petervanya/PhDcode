@@ -63,7 +63,7 @@ def inv_kappa(subst, T=300.0):
     return 1.0 / (n*kB*T*subst.kappaT)
 
 
-def aii(subst):
+def aii_from_k(subst):
     """Like bead interaction parameter
     in the units of kT/rho
     For water, a ~= 75 kT/rho"""
@@ -114,7 +114,7 @@ if __name__ == "__main__":
 
     print("=====")
     print("Like bead inter params a | water: %.2f | meoh: %.2f | Pt: %.2f" %\
-         (aii(water), aii(meoh), aii(Pt)))
+         (aii_from_k(water), aii_from_k(meoh), aii_from_k(Pt)))
 
     mpb = 3  # molecules per bead
     print("Travis like bead inter params a | water: %.2e | meoh: %.2e | Pt: %.2e" %\

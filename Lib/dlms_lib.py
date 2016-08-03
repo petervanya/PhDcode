@@ -76,6 +76,36 @@ def save_config(fname, names, xyz, imcon=0):
         conf_str += "    %.10f    %.10f    %.10f\n" % (xyz[i, 0], xyz[i, 1], xyz[i, 2])
 
     open(fname, "w").write(conf_str)
-    print("Initial configuration saved in %s" % fname)
+    print("Initial configuration saved in %s." % fname)
+
+
+# ===== CONTROL file
+def gen_control(L, dt, steps, thermo=100, halo=2.5, traj_after=20000, kT=1.0):
+    s = "pokus\n\n"
+    
+    s += "volume %.2f\n" % L**3
+    s += "temperature 1.0\n"
+    s += "cutoff 1.0\n"
+    s += "boundary halo %.1f\n\n" % halo
+    
+    s += "timestep %.3f\n" % dt
+    s += "steps %i\n" % steps
+    s += "equilibration steps 0\n"
+    s += "scale temperature every 10\n"
+    s += "trajectory %i 100\n" % traj_after
+    s += "stats every 100\n"
+    s += "stack size 100\n"
+    s += "print every %i\n\n" % thermo
+    
+    s += "job time 1000000.0\n"
+    s += "close time 1.0\n\n"
+    
+    s += "ensemble nvt dpdvv\n\n"
+    s += "finish\n"
+    
+    print("CONTROL: Box size: %.1f | Timestep: %.3f | Num steps: %i" % \
+         (L, dt, steps))
+    open("CONTROL", "w").write(s)
+    print("CONTROL file saved.")
 
 

@@ -14,7 +14,7 @@ import numpy as np
 from math import sqrt
 import yaml, sys
 from collections import namedtuple
-from analyse_mw_data import mol_size, get_chi
+from analyse_mw_data import mol_size, get_chi, aii_from_k
 import dlms_lib as dlms
 from docopt import docopt
 
@@ -54,11 +54,19 @@ def method_1(kT=1.0, rc=1.0, gamma=4.5):
     return a_ij
 
 
-def method_2(kT=1.0):
-    """aii based on compressibility
-    aij = sqrt(aii ajj) + 3.27 chi 
+def method_2(mols_in_beads, rho_DPD=3.0, kT=1.0, rc=1.0, gamma=4.5):
+    """Assumptions:
+    * aii based on compressibility
+    * aij = sqrt(aii ajj) + 3.27 chi
     """
-    pass
+    a_ij = {}
+    aW = mols_in_beads["W"] * aii_from_k(water) / rho_DPD
+    aM = mols_in_beads["M"] * aii_from_k(meoh) / rho_DPD
+    delta_aMW = 3.27 * get_chi(water, meoh)
+    a_ij[("W", "W")] = [aW * kT, rc, gamma]
+    a_ij[("M", "M")] = [aM * kT, rc, gamma]
+    a_ij[("M", "W")] = [sqrt(aW*aM) * kT + delta_aMW, rc, gamma]
+    return a_ij
 
 
 if __name__ == "__main__":
@@ -86,20 +94,23 @@ if __name__ == "__main__":
     mwb = w_in_b * water.Mm * 1e3 * AMU
     mmb = m_in_b * meoh.Mm * 1e3 * AMU
     
-    L_DPD = L / rc
+    L_DPD = np.round(L / rc, 1)
     dt_DPD = data["dt"]
     Ttot = data["run-time"] * 1e-9    # in s
     Ttot_DPD = Ttot / tau
-    Nsteps = int(Ttot_DPD // dt_DPD)
+    Nsteps = int(Ttot_DPD // dt_DPD) // 1000 * 1000   # round to 1000
 
     wout("===== Generating water-methanol mixture ====\n")
-    wout("DPD params | V: %.2e | rc: %.2e | tau: %.2e\n" % (V, rc, tau))
+    wout("DPD params | rc: %.2e | tau: %.2e\n" % (rc, tau))
+    wout("Box size in SI/DPD units: %.2e / %.2f\n" % (L, L_DPD))
+    wout("METHOD: %i\n" % data["method"])
     wout("Number of molecules | water: %i | meoh: %i\n" % (Nw, Nm))
+    wout("Beads per molecule | water: %i | meoh: %i\n" % (w_in_b, m_in_b))
     wout("Number of beads | water: %i | meoh: %i\n" % (Nwb, Nmb))
     wout("Bead masses | water: %.2e | meoh: %.2e\n" % (mwb, mmb))
 
     # producing xyz file
-    beads = {"W": w_in_b, "M": m_in_b}  # is this necessary?
+    mols_in_beads = {"W": w_in_b, "M": m_in_b}
     bead_types = ["W", "M"]
     bead_pop = {"W": Nwb, "M": Nmb}
 
@@ -112,7 +123,7 @@ if __name__ == "__main__":
     if data["method"] == 1:
         a_ij = method_1()
     elif data["method"] == 2:
-        a_ij = method_2()
+        a_ij = method_2(mols_in_beads, rho_DPD=rho_DPD)
     else:
         raise NotImplementedError
 
@@ -127,9 +138,9 @@ if __name__ == "__main__":
 
     fname = "FIELD"
     open(fname, "w").write(field_string)
-    print("FIELD file saved in %s" % fname)
-
-
+    print("FIELD file saved.")
+    
+    dlms.gen_control(L_DPD, dt_DPD, Nsteps, thermo=500, traj_after=0)
 
 
 

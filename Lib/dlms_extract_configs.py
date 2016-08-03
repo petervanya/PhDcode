@@ -1,9 +1,13 @@
 #!/usr/bin/env python
 """Usage:
-    extract_configs.py [--nfiles <nf> --levcfg <levcfg>]
+    extract_configs.py [--frames <nf> --levcfg <levcfg>]
+
+Extact config frames from DL_MESO HISTORY files, 
+convert them to xyz files and place into Dump/ directory.
+BEFORE: place DL_MESO script history_config.exe INTO Lib/Extern directory.
 
 Options:
-    --nfiles <nf>       Number of config files requested [default: 10]
+    --frames <nf>       Number of config files requested [default: 10]
     --levcfg <levcfg>   Configuration level [default: 0]
 
 21/06/16
@@ -30,7 +34,7 @@ def get_timesteps():
 
 
 args = docopt(__doc__)
-Nf = int(args["--nfiles"])
+Nf = int(args["--frames"])
 levcfg = int(args["--levcfg"])
 
 # number of cores
@@ -54,9 +58,9 @@ if not os.path.exists("Dump"):
 # done
 
 for i in range(Nhf-Nf+1, Nhf+1):
-    subprocess.call("/home/pv278/PTFEsim/Scripts/DLMSbin/history_config.exe %i %i %i" %\
+    subprocess.call("~/Res/PhDcode/Lib/Extern/history_config.exe %i %i %i" %\
                    (Nc, levcfg, i), shell=True)
-    subprocess.call("config2xyz.py CONFIG.out --shift --nafion", shell=True)
+    subprocess.call("config2xyz.py CONFIG.out --shift", shell=True)
     subprocess.call("mv CONFIG.xyz Dump/dump_%i.xyz" % i, shell=True)
 
 

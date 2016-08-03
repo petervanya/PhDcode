@@ -4,7 +4,7 @@
 
 fname="input.yaml"
 
-cat >fname <<EOF
+cat >$fname <<EOF
 # Methods:
 # 1. aii = 25 kT, da ~chi from FH
 # 2. aii based on compressibility, da = sqrt(a11 a22) + ~chi
@@ -13,7 +13,7 @@ cat >fname <<EOF
 dpd-density: 3.0
 box-size: 10.0            # in nm
 temperature: 300.0        # in K
-dt: 0.03
+dt: 0.05
 run-time: 10              # in ns
 water-meoh-ratio: 1.0     # number ratio of water to meoh molecules
 method: 1

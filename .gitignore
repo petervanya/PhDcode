@@ -11,3 +11,4 @@ Lib/Fcore/*.so
 */*.pyc
 */*.xyz
 */input.yaml
+Lib/Extern
