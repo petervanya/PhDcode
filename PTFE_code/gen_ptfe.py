@@ -18,8 +18,8 @@ from numpy import pi, cos, sin
 import sys
 import yaml
 from docopt import docopt
-import Lib.lmp_lib as ll
-import Lib.dlms_lib as dlms
+import lmp_lib as ll
+import dlms_lib as dlms
 
 NA = 6.022e23
 AMU = 1.66e-27
