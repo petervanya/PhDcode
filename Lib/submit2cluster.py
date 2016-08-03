@@ -1,16 +1,17 @@
 #!/usr/bin/env python
 """Usage:
-    submit_cottrell.py gaussian <node> <dir> <fname> (--bash | --direct) [--cores <nc>] [--dry]
-    submit_cottrell.py lammps <node> <dir> <fname> (--bash | --direct) [--cores <nc>] [--dry]
+    submit_cottrell.py gaussian <node> <dir> <fname> [--cores <nc> --dry --direct]
+    submit_cottrell.py lammps <node> <dir> <fname> [--cores <nc> --dry]
+    submit_cottrell.py dlms   <node> [--cores <nc> --dry]
 
-A script to easily submit Gaussian and LAMMPS jobs to the Cottrell cluster
+A script to easily submit Gaussian and LAMMPS jobs to the Cottrell cluster.
+Calling a submit2cottrell.sh script with appropriate arguments.
 
 Arguments:
     <node>        Cluster node, from 0 to 10
     <dir>         Directory of the gjf file
     <fname>       Name of the gjf file, NO EXTENSION
     --direct      Submit directly using Gaussian form
-    --bash        Submit via bash script cottrell.sh
 
 Options:
     --cores <nc>  Number of cores [default: 16]
@@ -21,10 +22,10 @@ pv278@cam.ac.uk, 16/05/15
 from docopt import docopt
 import os, sys, subprocess
 
-def get_sup(node, maxnum=27):
+def get_sup_name(node, maxnum=27):
     """Get supervisor name"""
     if node > maxnum:
-        print "Only nodes 0 to 27 available, aborting."
+        print("Only nodes 0 to 27 available, aborting.")
         sys.exit()
     return "jae" if node < 10 else "pdb" if 10 <= node < 20 else "new"
 
@@ -32,7 +33,7 @@ if __name__ == "__main__":
     args = docopt(__doc__, version=0.1)
 #    print args
     node = int(args["<node>"])
-    server = get_sup(node, 27) + ".q@compute-0-" + str(node)
+    server = get_sup_name(node, 27) + ".q@compute-0-" + str(node)
     cores = int(args["--cores"])
 
     ddir = args["<dir>"]
@@ -43,14 +44,7 @@ if __name__ == "__main__":
         prog = "gaussian"
         filepath = os.path.join(os.getcwd(), ddir, filename)
         filepath = filepath.rstrip(".gjf")
-        if args["--bash"]:
-            submit_string = "qsub -q " + server + " -pe orte " + str(cores) + \
-                            " " + bashscript + " " + prog + " " + filepath
-            if args["--dry"]:
-                print submit_string
-                sys.exit()
-            subprocess.call(submit_string, shell=True)
-        elif args["--direct"]:
+        if args["--direct"]:
             ext = ".gjf"
             base_dir = os.path.abspath(os.path.join(os.getcwd(), ".."))
             filedir = os.path.join(base_dir, dir)
@@ -69,10 +63,9 @@ if __name__ == "__main__":
             cmd = gaussianbin + " < " + infilepath + " > " + outfilepath
             submit_string = "qsub -b y -q " + server + " -pe orte " + str(cores) + " " + cmd
  
-            if args["--dry"]:
-                print submit_string
-                sys.exit()
-            subprocess.call(submit_string, shell=True)
+        else:
+            submit_string = "qsub -q " + server + " -pe orte " + str(cores) + \
+                            " " + bashscript + " " + prog + " " + filepath
 
     elif args["lammps"]:
         prog = "lammps"
@@ -80,9 +73,18 @@ if __name__ == "__main__":
         submit_string = "qsub -q " + server + " -pe orte " + str(cores) + \
                          " " + bashscript + " " + \
                          prog + " " + filepath + " " + str(cores)
-        if args["--dry"]:
-            print submit_string
-            sys.exit()
+
+    elif args["dlms"]:
+        prog = "dlms"
+        filepath = "dummy"
+        submit_string = "qsub -q " + server + " -pe orte " + str(cores) + \
+                         " " + bashscript + " " + \
+                         prog + " " + filepath + " " + str(cores)
+
+
+    if args["--dry"]:
+        print(submit_string)
+    else:
         subprocess.call(submit_string, shell=True)
 
 

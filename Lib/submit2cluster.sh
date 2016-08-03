@@ -19,6 +19,7 @@ if [ "$1" = "-h" ]; then
     Usage
 fi
 
+# Comment due to DLMS not requiring input file arguments
 if [ -z "$2" ]; then
     Usage
 else
@@ -55,6 +56,10 @@ elif [ "$1" == "lammps" ]; then
     progpath="/home/pv278/sw/bin/lmp_mpi"
     mpi_run="/opt/openmpi/bin/mpirun"
     time $mpi_run -np $Ncores $progpath < $filepath
+elif [ "$1" == "dlms" ]; then
+    progpath="/home/pv278/sw/bin/dl_meso_mpi"
+    mpi_run="/opt/openmpi/bin/mpirun"
+    time $mpi_run -np $Ncores $progpath
 else
   Usage
 fi

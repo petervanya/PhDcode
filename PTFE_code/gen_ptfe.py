@@ -277,19 +277,18 @@ if __name__ == "__main__":
     atom_ids_n = [bt2num[bt] for bt in atom_ids_l]
 
     a_ij = gen_inter_coeffs(data["chi-params"], bead_types, gamma, rc=1.0)
-    k_ij = {1: [k0, r0]}
     masses = dict( (i, 1.0) for i in range(1, Nbt+1) )
 
     # ==== printing
     if args["dlms"]:
         fname = "CONFIG"
         dlms.save_config(fname, atom_ids_l, xyz)
-        print("Coordinates file saved in %s" % fname)
  
         bond_mat = gen_bonds_one_chain(Nmc, mono_beads, start=0)
         print("FIELD: %i bonds in a chain" % len(bond_mat))
         bead_list = list("AAABC"*Nmc)
-        nafion_mol_str = dlms.mol2str("nafion", Nc, bead_list, bond_mat, k_ij)
+        nafion_mol_str = dlms.mol2str("nafion", Nc, bead_list, bond_mat, \
+                                      bond_type="harm", k0=k0, r0=r0)
         field_string = "bla\n\n" +\
                        dlms.species2str(bead_types, bead_pop) +\
                        dlms.inter2str(a_ij, method="dpd") + \
