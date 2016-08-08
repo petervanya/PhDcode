@@ -1,14 +1,17 @@
 #!/usr/bin/env python
 """Usage:
-    extract_configs.py [--frames <nf> --levcfg <levcfg>]
+    dlms_extract_configs.py <frames> [--levcfg <levcfg> --nafion]
 
 Extact config frames from DL_MESO HISTORY files, 
 convert them to xyz files and place into Dump/ directory.
 BEFORE: place DL_MESO script history_config.exe INTO Lib/Extern directory.
 
+Arguments:
+    --frames            Number of config files requested [default: 10]
+
 Options:
-    --frames <nf>       Number of config files requested [default: 10]
     --levcfg <levcfg>   Configuration level [default: 0]
+    --nafion            Bead ordering "ABCWEP"
 
 21/06/16
 """
@@ -27,14 +30,14 @@ def get_timesteps():
         for line in f:
             line = line.rstrip()
             if "traj" in line:
-                Nevery = int(line.split()[2])
+                Nstart, Nevery = list(map(int, line.split()[1:3]))
             if "steps" in line and not "equilibration" in line:
                 Nsteps = int(line.split()[1])
-    return Nsteps//Nevery + 1
+    return (Nsteps - Nstart) // Nevery + 1
 
 
 args = docopt(__doc__)
-Nf = int(args["--frames"])
+Nf = int(args["<frames>"])
 levcfg = int(args["--levcfg"])
 
 # number of cores
@@ -57,10 +60,19 @@ if not os.path.exists("Dump"):
 #     mv CONFIG.xyz Dump/dump_${i}.xyz
 # done
 
+hist_script = os.path.expanduser("~/Res/PhDcode/Lib/Extern/history_config.exe")
+transf_script = os.path.expanduser("~/Res/PhDcode/Lib/config2xyz.py")
+nafion_flag = "--nafion" if args["--nafion"] else ""
+if not os.path.isfile(hist_script):
+    sys.exit("Cannot find history_config.exe.")
+if not os.path.isfile(transf_script):
+    sys.exit("Cannot find config2xyz.py.")
+
 for i in range(Nhf-Nf+1, Nhf+1):
-    subprocess.call("~/Res/PhDcode/Lib/Extern/history_config.exe %i %i %i" %\
-                   (Nc, levcfg, i), shell=True)
-    subprocess.call("config2xyz.py CONFIG.out --shift", shell=True)
+    cmd = "%s %i %i %i" % (hist_script, Nc, levcfg, i)
+    subprocess.call(cmd, shell=True)
+    subprocess.call("%s CONFIG.out --shift %s" % \
+                   (transf_script, nafion_flag), shell=True)
     subprocess.call("mv CONFIG.xyz Dump/dump_%i.xyz" % i, shell=True)
 
 
