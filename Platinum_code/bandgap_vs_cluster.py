@@ -30,7 +30,7 @@ def get_Eg(cluster_list):
 
 def get_cluster_list():
     """Read cluster configurations from the file"""
-    with open("cluster_list") as f:
+    with open("cluster_list.txt") as f:
         cluster_list = f.readlines()
     cluster_list = [i.strip("\n") for i in cluster_list]
     return cluster_list
