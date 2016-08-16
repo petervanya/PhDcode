@@ -2,7 +2,7 @@
 
 Usage(){
   echo "Usage: 
-    $(basename $0) <prog> <file> <nc>
+    submit2cluster.sh <prog> <file> <nc>
   
 Script to submit Gaussian adsorption runs to the Cottrell
 
@@ -14,6 +14,7 @@ Options:
     <nc>          Number of cores"
 exit 0
 }
+
 
 if [ "$1" = "-h" ]; then
     Usage
@@ -50,17 +51,25 @@ filename=$(basename "$filepath")
 cd $filedir
 
 if [ "$1" == "gaussian" ]; then
+    echo "Running Gaussian."
     progpath="/home/Gaussian/g09/g09"
-    $progpath < $filepath.gjf > $filepath.out
+    $progpath <$filepath.gjf >$filepath.out
 elif [ "$1" == "lammps" ]; then
+    echo "Running LAMMPS."
     progpath="/home/pv278/sw/bin/lmp_mpi"
     mpi_run="/opt/openmpi/bin/mpirun"
-    time $mpi_run -np $Ncores $progpath < $filepath
+    time $mpi_run -np $Ncores $progpath <$filepath
 elif [ "$1" == "dlms" ]; then
+    echo "Running dl_meso_mpi."
     progpath="/home/pv278/sw/bin/dl_meso_mpi"
     mpi_run="/opt/openmpi/bin/mpirun"
     time $mpi_run -np $Ncores $progpath
+elif [ "$1" == "dlms_serial" ]; then
+    echo "Running dl_meso_serial."
+    progpath="/home/pv278/sw/bin/dl_meso_serial"
+    time $progpath
 else
-  Usage
+    Usage
 fi
+
 
