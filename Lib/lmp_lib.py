@@ -5,6 +5,7 @@ A collection of functions to manipulate LAMMPS files
 pv278@cam.ac.uk, 11/01/16
 """
 import numpy as np
+import sys, os
 
 # ===== print input
 def header2str(N, Nbonds, atomtypes, bondtypes, L):
@@ -95,6 +96,8 @@ def bonds2str2(bond_mat):
 # ===== manipulate output
 def read_xyzfile(outfile):
     """Read one xyz outfile into a numpy matrix"""
+    if not os.path.isfile(outfile):
+         sys.exit("File %s not found." % outfile)
     A = open(outfile, "r").readlines()[2:]
     A = [line.split() for line in A]
     A = np.array(A, order="F").astype(float)
