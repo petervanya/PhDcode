@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """Usage:
-    gen_mw.py <input> [--xyz <xyz>] [--stream <stream>]
+    gen_mw.py <input> [--xyz <xyz> --stream <stream>]
 
 Generate methanol/water mixture for DL_MESO software.
 
@@ -41,6 +41,13 @@ def calc_num_molecules(V, eta):
     return Nw, Nm
 
 
+def calc_num_molecules2(V, fw):
+    """Calculate number of water and meoh molecules given 
+    the fraction of water molecules"""
+    eta = fw / (1 - fw)
+    return calc_num_molecules(V, eta)
+
+
 def method_1(kT=1.0, rc=1.0, gamma=4.5):
     """Assumptions:
     * aii = 25 kT
@@ -77,17 +84,16 @@ if __name__ == "__main__":
     rho_DPD = data["dpd-density"]
     L = data["box-size"] * 1e-9
     T = data["temperature"]
-    eta = data["water-meoh-ratio"]
+#    eta = data["water-meoh-ratio"] # deprecated
+    fw = data["water-molar-fraction"]
     # DPD scales
     rc = (mol_size(water)**3 * data["waters-in-bead"] * rho_DPD)**(1./3)
     m0 = water.Mm * 1e3 * AMU
     tau = sqrt(m0 * rc**2 / (kB * T))
 
     V = L**3
-#    Vw, Vm = V * wr, L**3 * (1-wr)
-#    Nw = water.rho * Vw * NA / water.Mm
-#    Nm = meoh.rho * Vm * NA / meoh.Mm
-    Nw, Nm = calc_num_molecules(V, eta)
+#    Nw, Nm = calc_num_molecules(V, eta) # deprecated
+    Nw, Nm = calc_num_molecules2(V, fw)
     w_in_b, m_in_b = data["waters-in-bead"], data["meohs-in-bead"]
     Nwb = Nw // w_in_b
     Nmb = Nm // m_in_b
@@ -140,7 +146,7 @@ if __name__ == "__main__":
     open(fname, "w").write(field_string)
     print("FIELD file saved.")
     
-    dlms.gen_control(L_DPD, dt_DPD, Nsteps, thermo=500, traj_after=0)
+    dlms.gen_control(L_DPD, dt_DPD, Nsteps, thermo=500, traj_after=Nsteps//2)
 
 
 
