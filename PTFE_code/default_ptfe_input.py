@@ -96,6 +96,7 @@ r0 = 0.1
 elmat = args["--el"]
 w = float(args["--width"])
 rPt = float(args["--rpt"])
+method = 1
 
 if elmat not in ["carbon", "silica", "quartz"]:
     print("ERROR. Choose from electrode support: carbon, silica, quartz.")
@@ -113,8 +114,15 @@ s = """# ===== Bead types:
 # * A, B, C
 # * W: water bead: 6 H2O\n"""
 s += "# * E: electrodes from %s\n" % elmat
-s += """# * P: platinum
-# =====\n"""
+s += "# * P: platinum"
+s += """
+# ===== Method:
+# * 1: a_DPD = 25 = (16 - 1) / 0.2 / 3
+# * 2: a_DPD = 158 = (6*16 - 1) / 0.2 / 3
+\n"""
+
+s += "seed:              1234\n"
+s += "method:            %i\n" % method
 
 s += "box-size:          %.0f        # DPD units, 1 = 8.14 AA\n" % L
 s += "temperature:       %.1f       # Units of kB T\n" % T
@@ -139,7 +147,7 @@ s += "    Pt-ratio:      %.1f       # ratio of Pt/C segment\n" % rPt
 
 fname = "input.yaml"
 open(fname, "w").write(s)
-print("Parameter file saved in", fname)
+print("Parameter file saved in %s." % fname)
 
 
 

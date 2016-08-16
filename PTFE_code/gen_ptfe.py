@@ -48,8 +48,7 @@ def set_electrodes(data, L):
     """
     Lcl = data["electrodes"]["width"]  # electrode layer width
     if Lcl > L/2:
-        print("Electrode layer thicker than membrane, aborting.")
-        sys.exit()
+        sys.exit("Electrode layer thicker than membrane.")
 
     if Lcl > 1e-5:
         Pt_ratio = data["electrodes"]["Pt-ratio"]
@@ -233,20 +232,25 @@ if __name__ == "__main__":
     try:
         data = yaml.load(open(args["<input>"]))
     except IOError:
-        print("Input file not found:", args["<input>"])
-        sys.exit()
-    np.random.seed(1234)
+        sys.exit("Input file not found:", args["<input>"])
+    np.random.seed(data["seed"])
+    if data["method"] == 1:
+        a_DPD = 25.0
+    elif data["method"] == 2:
+        a_DPD = 158.0
+    else:
+        sys.exit("Choose method 1 or 2.")
     gamma = data["gamma"] 
     r0 = data["equilibrium-dist"]
     lmbda = data["water-uptake"]
     L = data["box-size"]
     if lmbda < 3:
-        print("Water uptake should be more than 3, aborting.")
-        sys.exit()
+        sys.exit("Water uptake should be more than 3, aborting.")
 
     print("=== Creating input file for Nafion for %s ===" % \
           ("DL_MESO" if args["dlms"] else "LAMMPS"))
-    print("Box size: %.1f | Water uptake: %.1f" % (L, lmbda))
+    print("Box size: %.1f | a_DPD: %0.1f | Water uptake: %.1f" % \
+         (L, a_DPD, lmbda))
 
     # ===== setting numbers
     mono_beads = data["mono-beads"]
@@ -281,8 +285,7 @@ if __name__ == "__main__":
 
     # ==== printing
     if args["dlms"]:
-        fname = "CONFIG"
-        dlms.save_config(fname, atom_ids_l, xyz)
+        dlms.save_config("CONFIG", atom_ids_l, xyz)
  
         bond_mat = gen_bonds_one_chain(Nmc, mono_beads, start=0)
         print("FIELD: %i bonds in a chain" % len(bond_mat))
