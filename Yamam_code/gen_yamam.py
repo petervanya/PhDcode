@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """Usage:
-    dlms_yamam.py <input> (dlms | lammps) [--xyz <xyz>]
+    gen_yamam.py <input> (dlms | lammps) [--xyz <xyz>]
 
 Generate Nafion input files to feed into a DPD software suite.
 Options:
@@ -18,8 +18,8 @@ from numpy import pi, cos, sin
 import sys
 import yaml
 from docopt import docopt
-import Lib.lmp_lib as ll
-import Lib.dlms_lib as dlms
+import lmp_lib as ll
+import dlms_lib as dlms
 
 NA = 6.022e23
 AMU = 1.66e-27
@@ -48,8 +48,7 @@ def set_electrodes(data, L):
     """
     Lcl = data["electrodes"]["width"]  # electrode layer width
     if Lcl > L/2:
-        print("Electrode layer thicker than membrane, aborting.")
-        sys.exit()
+        sys.exit("Electrode layer thicker than membrane, aborting.")
 
     if Lcl > 1e-5:
         Pt_ratio = data["electrodes"]["Pt-ratio"]
@@ -61,8 +60,8 @@ def set_electrodes(data, L):
         Nelb = int(rho_DPD * int(Vcl))     # not (4*pi/3*rc**3), must be cubes
         Nsup = int((1-Pt_ratio) * Nelb)
         Npt = int(Pt_ratio * Nelb)
-        if Nsup%2 != 0: Nsup += 1
-        if Npt%2 != 0: Npt += 1
+        if Nsup % 2 != 0: Nsup += 1
+        if Npt % 2 != 0: Npt += 1
         print("Electrode beads: %i | Support: %i | Pt: %i" % (Nelb, Nsup, Npt))
     else:
         Lcl, Lpt = 0.0, 0.0
@@ -230,8 +229,7 @@ if __name__ == "__main__":
     try:
         data = yaml.load(open(args["<input>"]))
     except IOError:
-        print("Input file not found:", args["<input>"])
-        sys.exit()
+        sys.exit("Input file not found:", args["<input>"])
     np.random.seed(1234)
     gamma = data["gamma"] 
     r0 = data["equilibrium-dist"]
