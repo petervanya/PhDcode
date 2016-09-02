@@ -36,16 +36,16 @@ class Atoms:
     * charge
     * spin state
     """
-    def __init__(self, names=[], coords=np.array([]), charge=0, spin=1):
+    def __init__(self, names=[], xyz=np.array([]), charge=0, spin=1):
         self.names = list(names)
-        self.coords = np.array(coords, dtype=float)
+        self.xyz = np.array(xyz, dtype=float)
         self.charge = charge
         self.spin = spin
 
 
     def __len__(self):
         """Number of atoms"""
-        return len(self.coords)
+        return len(self.xyz)
 
 
     def __repr__(self):
@@ -53,26 +53,26 @@ class Atoms:
         >>> from numpy import array
         >>> m = Atoms(["Ar"], [(0, 0, 0)])
         >>> repr(m)
-        "Atoms(names=['Ar'], coords=array([[0, 0, 0]]), charge=0, spin=1)"
+        "Atoms(names=['Ar'], xyz=array([[0, 0, 0]]), charge=0, spin=1)"
         >>> str(m) == str(eval(repr(m)))
         True
         """
         kwargs = [(attr, getattr(self, attr))
-                  for attr in ['names', 'coords', 'charge', 'spin']
+                  for attr in ['names', 'xyz', 'charge', 'spin']
                   if hasattr(self, attr)]
         return "Atoms(%s)" % ', '.join('%s=%r' % kw for kw in kwargs)
 
 
     def __str__(self):
         """Print xyz onto screen"""
-        if self.coords.any():
-            M, N = self.coords.shape
+        if self.xyz.any():
+            M, N = self.xyz.shape
             line = ""
             line += str(self.charge) + " " + str(self.spin) + "\n"
             for i in range(M):
                 line += self.names[i] + "\t"
                 for j in range(N):
-                    line += "%.6f" % self.coords[i, j] + "\t"
+                    line += "%.6f" % self.xyz[i, j] + "\t"
                 line += "\n"
             return line.rstrip("\n")
         else:
@@ -81,19 +81,19 @@ class Atoms:
 
     def __add__(self, other):
         return Atoms(self.names + other.names, \
-                     np.vstack((self.coords, other.coords)), \
+                     np.vstack((self.xyz, other.xyz)), \
                      self.charge, \
                      self.spin)
 
 
     def save(self, filename, vmd=False):
         """
-        Save xyz coords, charge and spin into file
+        Save xyz xyz, charge and spin into file
         Also can save in VMD-compatible format w/ 1st line 
         with number of atoms and 2nd line a comment
         """
         with open(filename, "w") as f:
-            M, N = self.coords.shape
+            M, N = self.xyz.shape
             if vmd:
                 f.write(str(M) + "\nBlabla\n")
             else:
@@ -101,7 +101,7 @@ class Atoms:
             for i in range(M):
                 line = str(self.names[i]) + "\t"
                 for j in range(N):
-                    line += "%.6f" % self.coords[i, j] + "\t"
+                    line += "%.6f" % self.xyz[i, j] + "\t"
                 line += "\n"
                 f.write(line)
             f.close()
@@ -127,14 +127,14 @@ class Atoms:
                 charge, spin = (0, 1)
                 M = np.array([line.split() for line in string[2:]])
             names = M[:, 0]
-            coords = M[:, 1:4].astype(np.float)
-        return Atoms(names, coords, charge, spin)
+            xyz = M[:, 1:4].astype(np.float)
+        return Atoms(names, xyz, charge, spin)
 
 
     def shift(self, s):
         """Shift all atoms by a vector s"""
         assert len(s) == 3
-        self.coords = self.coords + s    
+        self.xyz = self.xyz + s    
 
 
     def rotate(self, theta=0, phi=0):
@@ -147,9 +147,9 @@ class Atoms:
                          [sin(phi), cos(phi),0],
                          [0,        0,       1]])
         for i in range(N):
-            self.coords[i] = np.dot(Rtheta, self.coords[i])
+            self.xyz[i] = np.dot(Rtheta, self.xyz[i])
         for i in range(N):
-            self.coords[i] = np.dot(Rphi, self.coords[i])
+            self.xyz[i] = np.dot(Rphi, self.xyz[i])
 
 
     def rotate_SO3(self, omega, alpha):
@@ -159,16 +159,18 @@ class Atoms:
                        [-omega[1], omega[0], 0       ]])
         R *= alpha
         for i in range(len(self)):
-            self.coords[i] = np.dot(self.coords[i], expm(R))
+            self.xyz[i] = np.dot(self.xyz[i], expm(R))
 
 
     def com(self):
         """Return centre of mass of atoms"""
-        weights = yaml.load(open(sys.path[0] + "/atomic_weights.yaml").read())
+#        weights = yaml.load(open(sys.path[0] + "/atomic_weights.yaml").read())
+        weights_yaml = os.path.dirname(__file__) + "/atomic_weights.yaml"
+        weights = yaml.load(open(weights_yaml).read())
         M = sum([weights[i] for i in self.names])
         com = np.zeros(3)
         for i in range(len(self)):
-            com += weights[self.names[i]] * self.coords[i]
+            com += weights[self.names[i]] * self.xyz[i]
         return com / M
 
 
@@ -183,8 +185,8 @@ class Atoms:
         N = len(self)
         if (n1 not in range(1, N+1)) or (n2 not in range(1, N+1)):
             raise ValueError
-        centre = np.copy(self.coords[n1-1])
-        dist = np.copy(self.coords[n2-1] - self.coords[n1-1])
+        centre = np.copy(self.xyz[n1-1])
+        dist = np.copy(self.xyz[n2-1] - self.xyz[n1-1])
         s = centre + dist/2.0
         self.shift(-s)
         omega = np.array([0, dist[2], -dist[1]])
@@ -194,12 +196,12 @@ class Atoms:
 
 
     def align(self, n1, n2, axis=[1, 0, 0]):
-        """Align the coords so that atoms n1, n2 lie on x-axis
+        """Align the xyz so that atoms n1, n2 lie on x-axis
         n1, n2 in {1...N}"""
         N = len(self)
         if (n1 not in range(1, N+1)) or (n2 not in range(1, N+1)):
             raise ValueError
-        vec12 = np.copy(self.coords[n2-1] - self.coords[n1-1])
+        vec12 = np.copy(self.xyz[n2-1] - self.xyz[n1-1])
         alpha = acos( np.dot(vec12, axis)/norm(vec12) )
         omega = np.cross(vec12, axis)
         omega = omega / norm(omega)
@@ -208,21 +210,21 @@ class Atoms:
 
     def Rg(self):
         """Calculate the radius of gyration"""
-        weights = yaml.load(open(sys.path[0] + "/atomic_weights.yaml").read())
+        weights_yaml = os.path.dirname(__file__) + "/atomic_weights.yaml"
+        weights = yaml.load(open(weights_yaml).read())
         com = self.com()
         rg = 0.0
         M = sum([weights[i] for i in self.names])
         for i in range(len(self)):
-            rg += weights[self.names[i]] * sum((self.coords[i] - com)**2)
+            rg += weights[self.names[i]] * sum((self.xyz[i] - com)**2)
         return sqrt(rg / M)
 
 
 
 if __name__ == "__main__":
     print("===== Testing the Atoms class =====")
-    #coords = np.array([1, 0, 0] + [0, 1, 0] + [0, 0, 1]).reshape((3, 3))
-    coords = np.array([[0, 0, 0], [1, 0, 2], [2, 0, 3]], dtype=float)
-    atoms = Atoms(["H", "He", "Li"], coords)
+    xyz = np.array([[0, 0, 0], [1, 0, 2], [2, 0, 3]], dtype=float)
+    atoms = Atoms(["H", "He", "Li"], xyz)
     print(atoms)
     
     s = np.arange(3)
@@ -230,30 +232,30 @@ if __name__ == "__main__":
     atoms.shift(s)
     print(atoms)
 
-    atoms.coords = np.copy(coords)
+    atoms.xyz = np.copy(xyz)
     theta, phi = 90.0, 90.0
     print("* Rotating atoms by theta=%i, phi=%i:" % (theta, phi))
     atoms.rotate(radians(theta), radians(phi))
     print(atoms)
 
-    atoms.coords = np.copy(coords)
+    atoms.xyz = np.copy(xyz)
     print("* Shifting atoms to its centre of mass")
     atoms.shift_com()
     print(atoms)
     
-    atoms.coords = np.copy(coords)
+    atoms.xyz = np.copy(xyz)
     n1, n2 = 1, 2
     print("* Flipping atoms %i, %i:" % (n1, n2))
     atoms.flip(n1, n2)
     print(atoms)
 
-    atoms.coords = np.copy(coords)
+    atoms.xyz = np.copy(xyz)
     n1, n2 = 1, 2
     print("* Aligning atoms %i, %i:" % (n1, n2))
     atoms.align(n1, n2)
     print(atoms)
     
-    atoms.coords = np.copy(coords)
+    atoms.xyz = np.copy(xyz)
     print(atoms)
     print("* Radius of gyration: %.2f" % atoms.Rg())
 
