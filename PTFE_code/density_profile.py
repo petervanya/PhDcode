@@ -12,18 +12,17 @@ f(r) ~ exp( -r^2 / 2 sigma^2)
 TODO
 ====
 * Add option to decide which plane to slice through
-* Limit on cutoff w.r.t. link cell size
 
 Arguments:
-    <frame>             xyz frame
-    <bt>                Bead type 1..n
+    <frame>        xyz frame
+    <bt>           Bead type 1..n
 
 Options:
-    --depth <d>         Where to look for density cut [default: 0.5]
-    --grid <dx>         Grid spacing in DPD units [default: 0.25]
-    --sigma <s>         Sigma of smearing function [default: 0.4]
-    --cut <rc>          Cutoff in sigmas [default: 3]
-    --ncells <nlc>      Number of link cells [default: 5]
+    --depth <d>    Where to look for density cut [default: 0.5]
+    --grid <dx>    Grid spacing in DPD units [default: 0.25]
+    --sigma <s>    Sigma of smearing function [default: 0.4]
+    --cut <rc>     Cutoff in sigmas [default: 3]
+    --nx <nx>      Number of link cells in one dim [default: 5]
 
 pv278@cam.ac.uk, 09/08/16
 """
@@ -39,11 +38,11 @@ import lmp_lib as ll
 
 
 class link_cell(object):
-    def __init__(self, id, number, rmin, rmax):
+    def __init__(self, id, number):#, rmin, rmax):
         self.id = id
         self.number = np.array(number, dtype=int)
-        self.rmin = np.array(rmin)
-        self.rmax = np.array(rmax)
+#        self.rmin = np.array(rmin)
+#        self.rmax = np.array(rmax)
         self.atoms = []
 
     def __repr__(self):
@@ -52,67 +51,56 @@ class link_cell(object):
         return "link_cell(%s)" % ", ".join("%s=%r" % a for a in args)
 
 
-def create_link_cells(A, L, Nlcx):
-    """Nlcx: number of cells in one dimension"""
-    dL = L // Nlcx
+def create_link_cells(A, L, Nx):
+    """Nx: number of cells in one dimension"""
+    Lx = L / Nx
     lcs = []
     cnt = 0
-    for i in range(Nlcx):
-        for j in range(Nlcx):
-            for k in range(Nlcx):
-                lcs.append(link_cell(cnt, [i, j, k], \
-                                     [i*dL, j*dL, k*dL], \
-                                     [(i+1)*dL, (j+1)*dL, (k+1)*dL]))
+    for i in range(Nx):
+        for j in range(Nx):
+            for k in range(Nx):
+                lcs.append(link_cell(cnt, [i, j, k]))#, \
+#                                     [i*Lx, j*Lx, k*Lx], \
+#                                     [(i+1)*Lx, (j+1)*Lx, (k+1)*Lx]))
                 cnt += 1
     return lcs
 
 
-def allocate_atoms(A, L, linkcells, Nlcx):
+def allocate_atoms(A, L, lc, Nx):
     """Allocate atoms to link cells. For each atom, find out
-    to which cell it belongs and append its name/number to the cell list"""
+    to which cell it belongs and append its name/number to the cell list.
+    * lc: link cells"""
     xyz = A[:, 1:]
     N = len(xyz)
-    dL = L // Nlcx
-    print("Number of atoms to allocate: %i | LC size: %.2f" % (N, dL))
+    Lx = L / Nx
+    print("Number of atoms to allocate: %i | LC size: %.2f" % (N, Lx))
     for i in range(N):
-        num = np.floor(xyz[i] // dL)
-        linkcells[gridnum2id(num, Nlcx)].atoms.append(i)
+        num = xyz[i] // Lx
+        lc[gridnum2id(num, Nx)].atoms.append(i)
 
 
-def find_neighbour_cells(id, Nlcx):
+def neighbour_cells(id, Nx):
     """Find all neighbouring cells incl the given one"""
-    num = id2gridnum(id, Nlcx)
-    neigh = []
+    r = id2gridnum(id, Nx)
+    neighs = []
     tmp = np.arange(3) - 1
     for p in itertools.product(tmp, tmp, tmp):
-        n = []
-        for i in range(3):
-            n.append((num[i] - p[i] + Nlcx) % Nlcx)
-        neigh.append(n)
-    return [gridnum2id(n, Nlcx) for n in neigh]
+        neigh = (r + p) % Nx
+        neighs.append(neigh)
+    return [gridnum2id(neigh, Nx) for neigh in neighs]
 
 
-def gridnum2id(n, Nlcx):
+def gridnum2id(n, Nx):
     """Map 3d grid number to cell ID"""
-    return int(n[0] * Nlcx**2 + n[1] * Nlcx + n[2])
+    return int(n[0] * Nx**2 + n[1] * Nx + n[2])
 
 
-def id2gridnum(id, Nlcx):
+def id2gridnum(id, Nx):
     """Map cell ID to 3d grid number"""
-    nx = id // (Nlcx**2)
-    ny = (id - nx) // Nlcx
-    nz = id - nx - ny
-    return [nx, ny, nz]
-
-
-def atom_in_cell(r, rmin, rmax):
-    """Return True if atom with coord r is in a box
-    determined by rmin and rmax"""
-    truth_vec = np.zeros(3, dtype=int)
-    for i in range(3):
-        if r[i] > rmin[i] and r[i] < rmax[i]:
-            truth_vec[i] = 1
-    return np.all(truth_vec)
+    nx = id // (Nx**2)
+    ny = (id - nx * Nx**2) // Nx
+    nz = id - nx * Nx**2 - ny * Nx
+    return np.array([nx, ny, nz])
 
 
 def guess_box_size(xyz):
@@ -129,18 +117,18 @@ def norm_numba(r):
 
 
 @jit(float64(float64[:], float64, float64), nopython=True)
-def smear_func(r, sigma, cutoff):
+def smear_func(r, sigma, rc):
     """
     * r: 3d vector
     * sigma: std dev
-    * cutoff: cutoff beyond which func = 0
+    * rc: cutoff beyond which func = 0
     """
     nr = norm_numba(r)
     return exp(-nr**2 / (2*sigma**2)) / (2*pi*sigma**2)**(3/2) \
-        if nr < cutoff else 0.0
+        if nr < rc else 0.0
 
 
-def get_gridpoint2(A, r0, linkcells, sigma, cutoff, L, Nlcx):
+def get_gridpoint2(A, r0, lc, sigma, rc, L, Nx):
     """Generate one gridpoint. Pick local points in A
     and add the with the weight given by the smearing function"""
     pt = 0.0
@@ -148,28 +136,30 @@ def get_gridpoint2(A, r0, linkcells, sigma, cutoff, L, Nlcx):
     box = L * np.eye(3)
     inv_box = box / L**2
 
-    id_r0 = gridnum2id(np.floor(r0 // dL), Nlcx)
-#    print("r0 =", r0, "id_r0 = ", id_r0)
-#    print("lc[r0] |", linkcells[id_r0])
-    neigh_ids = find_neighbour_cells(id_r0, Nlcx)
-#    print("\nneigh_ids for r0:", neigh_ids)
+    id_r0 = gridnum2id((r0 // Lx), Nx)
+    neigh_ids = neighbour_cells(id_r0, Nx)
+    
+    na = []
     for id in neigh_ids:
-        for a in linkcells[id].atoms:
-            dr = xyz[a] - r0
-            G = inv_box @ dr
-            Gn = G - np.round(G)
-            drn = box @ Gn
-            pt += smear_func(drn, sigma, cutoff)
+        na.extend(lc[id].atoms)
+
+    for a in na:
+           dr = xyz[a] - r0
+           G = inv_box @ dr
+           Gn = G - np.round(G)
+           drn = box @ Gn
+           pt += smear_func(drn, sigma, rc)
+#    if pt != 0.0: print("%.2f   " % pt, end="")
     return pt
 
 
 def test_neighbour_cells():
     id = 2
-    Nlcx = 5
+    Nx = 5
     print("Testing neighbour cells.")
-    print("Number of cells in one dim: %i | Cell ID = %i." % (Nlcx, id))
-    print("Cell number (should be [0, 0, 2]):  ", id2gridnum(id, Nlcx))
-    nc = find_neighbour_cells(2, Nlcx)
+    print("Number of cells in one dim: %i | Cell ID = %i." % (Nx, id))
+    print("Cell number (should be [0, 0, 2]):  ", id2gridnum(id, Nx))
+    nc = neighbour_cells(2, Nx)
     print(nc)
     print(len(nc))
 
@@ -181,14 +171,17 @@ if __name__ == "__main__":
         A = ll.read_xyzfile(frame)
     else:
         print("File %s not found." % frame)
-    L = guess_box_size(A)
+    if len(A) > 1000:   # THINK THIS THROUGH
+        L = guess_box_size(A)
+    else:
+        L = 40.0
     sigma = float(args["--sigma"])
-    cutoff = float(args["--cut"]) * sigma
+    rc = float(args["--cut"]) * sigma
 
-    Nlcx = int(args["--ncells"])
-    dL = L // Nlcx
-    if cutoff > dL:
-        print("Warning: Smear function cutoff larger than link cell size.")
+    Nx = int(args["--nx"])
+    Lx = L / Nx
+    if rc > Lx:
+        print("Warning: Smear function rc larger than link cell size.")
 
     dx = float(args["--grid"])
     x = np.arange(dx/2, L, dx)
@@ -202,21 +195,21 @@ if __name__ == "__main__":
 
     print("===== Density profile =====")
     print("L: %.2f | Beadtype: %i | Beads: %i" % (L, bead, len(A)))
-    print("Total cells %i | Cell size: %.2f" % (Nlcx**3, dL))
-    print("Smearing sigma: %.2f | Cutoff: %.2f" % (sigma, cutoff))
+    print("Total cells %i | Cell size: %.2f" % (Nx**3, Lx))
+    print("Smearing sigma: %.2f | Cutoff: %.2f" % (sigma, rc))
     print("Density grid size: %.2f | Total points: %i" % (dx, Ngrid**2))
 
-    linkcells = create_link_cells(A, L, Nlcx)
-    allocate_atoms(A, L, linkcells, Nlcx)
+    lc = create_link_cells(A, L, Nx)
+    allocate_atoms(A, L, lc, Nx)
 
     if args["test"]:
         n = 10
-        print("Atoms in link cell %i\n" % n, linkcells[n].atoms)
+        print("Atoms in link cell %i\n" % n, lc[n].atoms)
         print("Number of atoms in link cells:")
-        natoms = np.array([len(linkcells[i].atoms) for i in range(Nlcx**3)])
+        natoms = np.array([len(lc[i].atoms) for i in range(Nx**3)])
         print(natoms)
         print("Total: %i" % sum(natoms))
-        tempA = A[linkcells[n].atoms]
+        tempA = A[lc[n].atoms]
         ll.save_xyzfile("cell.xyz", tempA)
         print("===========")
         test_neighbour_cells()
@@ -228,19 +221,14 @@ if __name__ == "__main__":
             sys.exit("Depth should be between 0 and 1.")
         print("Slice depth at z-coord: %.1f" % (L*d))
         rho = np.zeros((Ngrid, Ngrid))
-        tii = time.time()
+        ti = time.time()
         for i in range(Ngrid):
-#            ti = time.time()
             for j in range(Ngrid):
                 r0 = np.array([x[i], x[j], d * L])
-                rho[i, j] = get_gridpoint2(A, r0, linkcells, sigma, cutoff, L, Nlcx)
-            print("%i, %i / %i" % (i, j, Ngrid))
-#            print(rho[i])
-#            tf = time.time()
-#            print("Time: %.2f s." % (tf-ti))
-        tff = time.time()
-        print("Final time: %.2f s." % (tff - tii))
- 
+                rho[i, j] = get_gridpoint2(A, r0, lc, sigma, rc, L, Nx)
+        tf = time.time()
+        print("Final time: %.2f s." % (tf - ti))
+        
         fname = "density_2d_b%i_d%.2f.out" % (bead, d)
         np.savetxt(fname, rho)
         print("2d density profile saved in %s." % fname)
