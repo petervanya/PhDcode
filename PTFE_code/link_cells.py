@@ -36,11 +36,13 @@ class link_cells():
 
 
     def print_cells(self):
+        """Nicely print cells and associated atoms"""
         for k, v in self.cells.items():
             print(k, v)
 
 
     def cell_ids(self):
+        """Return list of all cell IDs"""
         return self.cells.keys()
 
 
@@ -51,16 +53,6 @@ class link_cells():
         return self.id_from_coord(n)
 
 
-#    def atom_in_cell(r, rmin, rmax):
-#        """Return True if atom with coord r is in a box
-#        determined by rmin and rmax"""
-#        truth_vec = np.zeros(3, dtype=int)
-#        for i in range(3):
-#            if r[i] > rmin[i] and r[i] < rmax[i]:
-#                truth_vec[i] = 1
-#        return np.all(truth_vec)
-#     
-#     
     def populate(self, xyz):
         """Populate cells with atom numbers"""
         for i in range(len(xyz)):
@@ -73,8 +65,8 @@ class link_cells():
         if id > self.N:
             sys.exit("ID must be less than the number of cells N.")
         nx = id // (self.Nx**2)
-        ny = (id - nx) // self.Nx
-        nz = id - nx - ny
+        ny = (id - nx * self.Nx**2) // self.Nx
+        nz = id - nx * self.Nx**2 - ny * self.Nx
         return np.array([nx, ny, nz])
 
 
@@ -93,15 +85,13 @@ class link_cells():
         the current cell"""
         if id not in range(self.N):
             sys.exit("ID not in the range 0..%i." % self.N)
-        num = self.cell_coord(id)
+        r = self.cell_coord(id)
         neighs = []
         tmp = np.arange(3) - 1
         for p in itertools.product(tmp, tmp, tmp):
-            n = []
-            for i in range(3):
-                n.append((num[i] - p[i] + self.Nx) % self.Nx)
-            neighs.append(n)
-        return [self.id_from_coord(n) for n in neighs]
+            neigh = (r + p) % self.Nx
+            neighs.append(neigh)
+        return [self.id_from_coord(neigh) for neigh in neighs]
 
 
 def test():
@@ -119,12 +109,15 @@ def test():
     lc.populate(xyz)
     
     # neighbour cells of 0
-    id = 0
-    print("Neighbour cells of cell 0:")
-    nc = lc.neighbour_cells(id)
-    print(nc)
-    print("%i neighbours in total (should be 27 in 3D)." % len(nc))
+    id = 414
+    print("Cell coord of id = %i (should be [4, 1, 4]):" % id, lc.cell_coord(id))
+    print("Neighbour cells of cell %i:\n" % id, lc.neighbour_cells(id))
+    id = 905
+    print("Cell coord of id = %i:" % id, lc.cell_coord(id))
+    print("Neighbour cells of cell %i:\n" % id, lc.neighbour_cells(id))
+    print("(Should be 27 neighbours in total in 3D.")
 
+    nc = lc.neighbour_cells(id)
     print("Neighbouring atoms:")
     na = []
     for i in nc:
