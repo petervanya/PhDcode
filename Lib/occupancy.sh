@@ -27,6 +27,12 @@ RESTORE='\033[0m'
 sup=$1
 user=$2
 
+if [ "`which qstat`" == "" ]; then
+  echo "No qstat on this computer."
+  exit 0
+fi
+
+
 if [ -z $sup ]; then
   echo -e "Usage: \n    occupancy.sh <sup>"
   exit
