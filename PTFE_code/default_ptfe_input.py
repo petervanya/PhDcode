@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """Usage:
-    default_ptfe_input.py [--L <L> --lmbda <l> --gamma <g>]
+    default_ptfe_input.py [--seed <s> --L <L> --lmbda <l> --gamma <g>]
                           [--el <el> --width <w> --rpt <rpt>]
 
 Generate input.yaml file that will serve to generate
@@ -8,6 +8,7 @@ a LAMMPS data file by being read by gen_ptfe.py script.
 This script supersedes the default_ptfe_input*.sh scripts.
 
 Options:
+    --seed <s>          Random seed [default: 1234]
     --L <L>             Box size [default: 40]
     --lmbda <l>         Water uptake [default: 9]
     --gamma <g>         DPD friction gamma [default: 4.5]
@@ -85,6 +86,7 @@ W E: 1.56
 
 
 args = docopt(__doc__)
+seed = int(args["--seed"])
 L = float(args["--L"])
 T = 1.0
 mono_beads = "AAABC"
@@ -96,7 +98,7 @@ r0 = 0.1
 elmat = args["--el"]
 w = float(args["--width"])
 rPt = float(args["--rpt"])
-method = 1
+method = 2
 
 if elmat not in ["carbon", "silica", "quartz"]:
     print("ERROR. Choose from electrode support: carbon, silica, quartz.")
@@ -121,7 +123,7 @@ s += """
 # * 2: a_DPD = 158 = (6*16 - 1) / 0.2 / 3
 \n"""
 
-s += "seed:              1234\n"
+s += "seed:              %i\n" % seed
 s += "method:            %i\n" % method
 
 s += "box-size:          %.0f        # DPD units, 1 = 8.14 AA\n" % L
