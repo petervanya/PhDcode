@@ -1,13 +1,11 @@
 #!/usr/bin/env python
 """Usage:
-    density_profile.py 3d <frame> <bt> [options]
-    density_profile.py 2d <frame> <bt> [options]
-    density_profile.py test <frame> <bt> [options]
-
-#density_profile.py 2d <frame> <bt> [--depth <d> --grid <dx> --sigma <s>]
+    density_profile.py 3d <frame> (--bead <bt> | water) [options]
+    density_profile.py 2d <frame> (--bead <bt> | water) [options]
+    density_profile.py test <frame> --bead <bt> [options]
 
 Produce density profiles, bulk (3d) or slice (2d) at a given depth.
-For each grid point, look for beads within 3 sigma and add them with weight
+For each grid point, look for beads within 3 sigma and smear them with
 f(r) ~ exp( -r^2 / 2 sigma^2)
 TODO
 ====
@@ -22,9 +20,9 @@ Options:
     --grid <dx>    Grid spacing in DPD units [default: 0.25]
     --sigma <s>    Sigma of smearing function [default: 0.4]
     --cut <rc>     Cutoff in sigmas [default: 3]
-    --nx <nx>      Number of link cells in one dim [default: 5]
+    --nx <nx>      Number of link cells in one dim [default: 10]
 
-pv278@cam.ac.uk, 09/08/16
+pv278@cam.ac.uk, 08/09/16
 """
 import numpy as np
 from numpy.linalg import norm
@@ -38,11 +36,9 @@ import lmp_lib as ll
 
 
 class link_cell(object):
-    def __init__(self, id, number):#, rmin, rmax):
+    def __init__(self, id, number):
         self.id = id
         self.number = np.array(number, dtype=int)
-#        self.rmin = np.array(rmin)
-#        self.rmax = np.array(rmax)
         self.atoms = []
 
     def __repr__(self):
@@ -51,29 +47,30 @@ class link_cell(object):
         return "link_cell(%s)" % ", ".join("%s=%r" % a for a in args)
 
 
-def create_link_cells(A, L, Nx):
-    """Nx: number of cells in one dimension"""
+def create_link_cells(L, Nx):
+    """
+    Nx: number of cells in one dimension
+    Lx: link cell size
+    """
     Lx = L / Nx
     lcs = []
     cnt = 0
     for i in range(Nx):
         for j in range(Nx):
             for k in range(Nx):
-                lcs.append(link_cell(cnt, [i, j, k]))#, \
-#                                     [i*Lx, j*Lx, k*Lx], \
-#                                     [(i+1)*Lx, (j+1)*Lx, (k+1)*Lx]))
+                lcs.append(link_cell(cnt, [i, j, k]))
                 cnt += 1
     return lcs
 
 
-def allocate_atoms(A, L, lc, Nx):
+def allocate_atoms(lc, xyz, L, Nx):
     """Allocate atoms to link cells. For each atom, find out
     to which cell it belongs and append its name/number to the cell list.
     * lc: link cells"""
-    xyz = A[:, 1:]
+#    xyz = A[:, 1:]
     N = len(xyz)
     Lx = L / Nx
-    print("Number of atoms to allocate: %i | LC size: %.2f" % (N, Lx))
+#    print("Number of atoms to allocate: %i | LC size: %.2f" % (N, Lx))
     for i in range(N):
         num = xyz[i] // Lx
         lc[gridnum2id(num, Nx)].atoms.append(i)
@@ -128,11 +125,11 @@ def smear_func(r, sigma, rc):
         if nr < rc else 0.0
 
 
-def get_gridpoint2(A, r0, lc, sigma, rc, L, Nx):
-    """Generate one gridpoint. Pick local points in A
+def get_gridpoint(xyz, r0, lc, sigma, rc, L, Nx):
+    """Generate one gridpoint. Pick local points in xyz
     and add the with the weight given by the smearing function"""
     pt = 0.0
-    xyz = A[:, 1:]
+#    xyz = A[:, 1:]
     box = L * np.eye(3)
     inv_box = box / L**2
 
@@ -186,21 +183,33 @@ if __name__ == "__main__":
     dx = float(args["--grid"])
     x = np.arange(dx/2, L, dx)
     Ngrid = len(x)
+    
+    if args["water"]:
+        xyzC = A[A[:, 0] == 3][:, 1:]
+        xyzW = A[A[:, 0] == 4][:, 1:]
+        lcC = create_link_cells(L, Nx)
+        allocate_atoms(lcC, xyzC, L, Nx)
+        lcW = create_link_cells(L, Nx)
+        allocate_atoms(lcW, xyzW, L, Nx)
+    if args["--bead"]:
+        bead = int(args["<bt>"])
+        bts = [int(b) for b in set(A[:, 0])]
+        if bead not in bts:
+            sys.exit("Chosen beadtype not present. Available: %s." % bts)
+        xyz = A[A[:, 0] == bead][:, 1:]
+        lc = create_link_cells(L, Nx)
+        allocate_atoms(lc, xyz, L, Nx)
 
-    bead = int(args["<bt>"])
-    bts = [int(b) for b in set(A[:, 0])]
-    if bead not in bts:
-        sys.exit("Chosen beadtype not present. Available: %s." % bts)
-    A = A[A[:, 0] == bead]
 
     print("===== Density profile =====")
-    print("L: %.2f | Beadtype: %i | Beads: %i" % (L, bead, len(A)))
+    if args["water"]:
+        print("L: %.2f | Water | Beads: %i" % (L, len(xyzC)+len(xyzW)))
+    else:
+        print("L: %.2f | Beadtype: %i | Beads: %i" % (L, bead, len(xyz)))
     print("Total cells %i | Cell size: %.2f" % (Nx**3, Lx))
     print("Smearing sigma: %.2f | Cutoff: %.2f" % (sigma, rc))
     print("Density grid size: %.2f | Total points: %i" % (dx, Ngrid**2))
 
-    lc = create_link_cells(A, L, Nx)
-    allocate_atoms(A, L, lc, Nx)
 
     if args["test"]:
         n = 10
@@ -209,31 +218,68 @@ if __name__ == "__main__":
         natoms = np.array([len(lc[i].atoms) for i in range(Nx**3)])
         print(natoms)
         print("Total: %i" % sum(natoms))
-        tempA = A[lc[n].atoms]
-        ll.save_xyzfile("cell.xyz", tempA)
+        temp_xyz = xyz[lc[n].atoms]
+        temp_A = np.vstack((bead*np.ones(len(temp_xyz)), temp_xyz.T)).T
+        ll.save_xyzfile("test_cell.xyz", temp_A)
         print("===========")
         test_neighbour_cells()
         print("===========")
+
 
     if args["2d"]:
         d = float(args["--depth"])
         if d > 1.0 or d < 0.0:
             sys.exit("Depth should be between 0 and 1.")
-        print("Slice depth at z-coord: %.1f" % (L*d))
+        print("2d grid | Slice depth at z-coord: %.1f" % (L*d))
         rho = np.zeros((Ngrid, Ngrid))
         ti = time.time()
-        for i in range(Ngrid):
-            for j in range(Ngrid):
-                r0 = np.array([x[i], x[j], d * L])
-                rho[i, j] = get_gridpoint2(A, r0, lc, sigma, rc, L, Nx)
+        if args["water"]:
+            fname = "density_2d_water_d%.1f.out" % d
+            for i in range(Ngrid):
+                for j in range(Ngrid):
+                    r0 = np.array([x[i], x[j], L*d])
+                    rho[i, j] += get_gridpoint(xyzC, r0, lcC, sigma, rc, L, Nx) / 2
+                    rho[i, j] += get_gridpoint(xyzW, r0, lcW, sigma, rc, L, Nx)
+        if args["--bead"]:
+            fname = "density_2d_b%i_d%.1f.out" % (bead, d)
+            for i in range(Ngrid):
+                for j in range(Ngrid):
+                    r0 = np.array([x[i], x[j], d * L])
+                    rho[i, j] = get_gridpoint(xyz, r0, lc, sigma, rc, L, Nx)
         tf = time.time()
         print("Final time: %.2f s." % (tf - ti))
         
-        fname = "density_2d_b%i_d%.2f.out" % (bead, d)
         np.savetxt(fname, rho)
         print("2d density profile saved in %s." % fname)
-     
+
+
     if args["3d"]:
-        raise NotImplementedError
+        print("3d grid")
+        rho = np.zeros((Ngrid**3, 4))
+        ti = time.time()
+        if args["water"]:
+            fname = "density_3d_water.out"
+            for i in range(Ngrid):
+                for j in range(Ngrid):
+                    for k in range(Ngrid):
+                        r0 = np.array([x[i], x[j], x[k]])
+                        gp = get_gridpoint(xyzC, r0, lcC, sigma, rc, L, Nx) / 2 + \
+                             get_gridpoint(xyzW, r0, lcW, sigma, rc, L, Nx)
+                        rho[i*Ngrid**2 + j*Ngrid + k] = [x[i], x[j], x[k], gp]
+                print("Slice %i/%i done. %.2f s" % (i+1, Ngrid, time.time() - ti))
+        if args["--bead"]:
+            fname = "density_3d_b%i.out" % bead
+            for i in range(Ngrid):
+                for j in range(Ngrid):
+                    for k in range(Ngrid):
+                        r0 = np.array([x[i], x[j], x[k]])
+                        rho[i*Ngrid**2 + j*Ngrid + k] = \
+                            [x[i], x[j], x[k], get_gridpoint(xyz, r0, lc, sigma, rc, L, Nx)]
+                print("Slice %i/%i done. %.2f s" % (i+1, Ngrid, time.time() - ti))
+        tf = time.time()
+        print("Final time: %.2f s." % (tf - ti))
+        
+        np.savetxt(fname, rho, fmt="%.6f", header="header")
+        print("3d density profile saved in %s." % fname)
 
 
