@@ -30,6 +30,9 @@ k0 = 4.0
 rho_el = {"carbon": 2000.0, "quartz": 2648.0, "silica": 2196.0}
 rho_Pt = 21450.0
 elem_wts = {"C": 12.01, "O": 15.99, "Si": 28.08}
+m0 = 6 * 18 * AMU
+kT = 300.0 * 1.381e-23
+tau = np.sqrt(m0 * rc**2 / kT)
 
 
 def set_electrodes(data, L):
@@ -249,8 +252,8 @@ if __name__ == "__main__":
 
     print("=== Creating input file for Nafion for %s ===" % \
           ("DL_MESO" if args["dlms"] else "LAMMPS"))
-    print("Box size: %.1f | a_DPD: %0.1f | Water uptake: %.1f" % \
-         (L, a_DPD, lmbda))
+    print("tau: %.2e | Box size: %.1f | a_DPD: %0.1f | lmbda: %.1f" % \
+         (tau, L, a_DPD, lmbda))
 
     # ===== setting numbers
     mono_beads = data["mono-beads"]
