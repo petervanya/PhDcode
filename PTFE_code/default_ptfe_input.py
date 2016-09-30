@@ -13,7 +13,7 @@ Options:
     --lmbda <l>         Water uptake [default: 9]
     --gamma <g>         DPD friction gamma [default: 4.5]
     --el <el>           Electrode type: carbon, silica, quartz [default: carbon]
-    --width <w>         Electrode width [default: 5.0]
+    --width <w>         Electrode width in DPD units [default: 5.0]
     --rpt <rpt>         Ratio of width of Pt segment on electrode [default: 0.0]
 
 pv278@cam.ac.uk, 16/06/16
