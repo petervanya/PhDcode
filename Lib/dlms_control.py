@@ -35,7 +35,7 @@ s += "temperature 1.0\n"
 s += "cutoff 1.0\n"
 s += "boundary halo %.1f\n\n" % halo
 
-s += "timestep %.2f\n" % dt
+s += "timestep %.3f\n" % dt
 s += "steps %i\n" % N
 s += "equilibration steps 0\n"
 s += "scale temperature every 10\n"
