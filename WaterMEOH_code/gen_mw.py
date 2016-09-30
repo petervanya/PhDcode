@@ -120,7 +120,7 @@ if __name__ == "__main__":
     bead_types = ["W", "M"]
     bead_pop = {"W": Nwb, "M": Nmb}
 
-    xyz = np.vstack( (np.random.rand(Nwb, 3), np.random.rand(Nmb, 3)) )
+    xyz = np.vstack( (np.random.rand(Nwb, 3), np.random.rand(Nmb, 3)) ) * L_DPD
     atom_ids = ["W"] * Nwb + ["M"] * Nmb
     masses = dict( (i, 1.0) for i in range(1, len(bead_types)+1) )
     wout("%i beads created\n" % (Nwb + Nmb))
