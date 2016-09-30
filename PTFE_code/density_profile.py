@@ -67,12 +67,11 @@ def allocate_atoms(lc, xyz, L, Nx):
     """Allocate atoms to link cells. For each atom, find out
     to which cell it belongs and append its name/number to the cell list.
     * lc: link cells"""
-#    xyz = A[:, 1:]
     N = len(xyz)
     Lx = L / Nx
 #    print("Number of atoms to allocate: %i | LC size: %.2f" % (N, Lx))
     for i in range(N):
-        num = xyz[i] // Lx
+        num = xyz[i] // Lx % Nx
         lc[gridnum2id(num, Nx)].atoms.append(i)
 
 
