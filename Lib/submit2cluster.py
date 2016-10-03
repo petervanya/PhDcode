@@ -28,7 +28,8 @@ def get_sup_name(node, maxnum=27):
     """Get supervisor name"""
     if node > maxnum:
         sys.exit("Only nodes 0 to 27 available.")
-    return "jae" if node < 10 else "pdb" if 10 <= node < 20 else "new"
+    return "jae" if node <= 9 else "pdb" if 10 <= node <= 19 \
+        else "new_jae" if 20 <= node <= 23 else "new"
 
 
 if __name__ == "__main__":
