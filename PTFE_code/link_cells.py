@@ -62,7 +62,7 @@ class link_cells():
 
     def cell_coord(self, id):
         """Return cell coordinates (i,j,k) from its id"""
-        if id > self.N:
+        if id >= self.N:
             sys.exit("ID must be less than the number of cells N.")
         nx = id // (self.Nx**2)
         ny = (id - nx * self.Nx**2) // self.Nx
