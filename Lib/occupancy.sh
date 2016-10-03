@@ -38,11 +38,11 @@ if [ -z $sup ]; then
   exit
 elif [ $sup == "jae" ]; then
   for i in {0..9}; do
-    line=`qstat -f -u '*' | grep $sup.q@compute-0-$i -A 1 | tail -1`
+    line=`qstat -f -u '*' | grep "^$sup.q@compute-0-$i" -A 1 | tail -1`
     num=`echo $line | awk '{print $1}'`
     if [[ $num =~ ^[0-9]+$ ]] ; then
        person=`echo $line | awk '{print $4}'`
-       cores=`qstat -f -u '*' | grep $sup.q@compute-0-$i | awk '{print $3}' | cut -d'/' -f2-3`
+       cores=`qstat -f -u '*' | grep "^$sup.q@compute-0-$i" | awk '{print $3}' | cut -d'/' -f2-3`
        echo -e $i ": ${RED}occupied${RESTORE}, $person, $cores"
     else
        echo -e $i ": ${GREEN}free${RESTORE}"
@@ -50,23 +50,34 @@ elif [ $sup == "jae" ]; then
   done
 elif [ $sup == "pdb" ]; then
   for i in {10..19}; do
-    line=`qstat -f -u '*' | grep $sup.q@compute-0-$i -A 1 | tail -1`
+    line=`qstat -f -u '*' | grep "^$sup.q@compute-0-$i" -A 1 | tail -1`
     num=`echo $line | awk '{print $1}'`
     if [[ $num =~ ^[0-9]+$ ]] ; then
        person=`echo $line | awk '{print $4}'`
-       cores=`qstat -f -u '*' | grep $sup.q@compute-0-$i | awk '{print $3}' | cut -d'/' -f2-3`
+       cores=`qstat -f -u '*' | grep "^$sup.q@compute-0-$i" | awk '{print $3}' | cut -d'/' -f2-3`
        echo -e $i ": ${RED}occupied${RESTORE}, $person, $cores"
     else
        echo -e $i ": ${GREEN}free${RESTORE}"
     fi
   done
 elif [ $sup == "new" ]; then
-  for i in {20..27}; do
-    line=`qstat -f -u '*' | grep $sup.q@compute-0-$i -A 1 | tail -1`
+  for i in {20..23}; do
+    line=`qstat -f -u '*' | grep "^${sup}_jae.q@compute-0-$i" -A 1 | tail -1`
     num=`echo $line | awk '{print $1}'`
     if [[ $num =~ ^[0-9]+$ ]] ; then
        person=`echo $line | awk '{print $4}'`
-       cores=`qstat -f -u '*' | grep $sup.q@compute-0-$i | awk '{print $3}' | cut -d'/' -f2-3`
+       cores=`qstat -f -u '*' | grep "^${sup}_jae.q@compute-0-$i" | awk '{print $3}' | cut -d'/' -f2-3`
+       echo -e $i ": ${RED}occupied${RESTORE}, $person, $cores"
+    else
+       echo -e $i ": ${GREEN}free${RESTORE}"
+    fi
+  done
+  for i in {24..27}; do
+    line=`qstat -f -u '*' | grep "^$sup.q@compute-0-$i" -A 1 | tail -1`
+    num=`echo $line | awk '{print $1}'`
+    if [[ $num =~ ^[0-9]+$ ]] ; then
+       person=`echo $line | awk '{print $4}'`
+       cores=`qstat -f -u '*' | grep "^$sup.q@compute-0-$i" | awk '{print $3}' | cut -d'/' -f2-3`
        echo -e $i ": ${RED}occupied${RESTORE}, $person, $cores"
     else
        echo -e $i ": ${GREEN}free${RESTORE}"
@@ -76,6 +87,6 @@ elif [ $sup == "pipe" ]; then
   qstat -f -u '*' | grep "qw" | grep $user
   echo "`qstat -f -u '*' | grep "qw" | grep $user | wc -l` jobs of $user waiting"
 else
-  echo "Wrong argument, choose jae or pdb."
+  echo "Wrong argument, choose from jae, pdb, new."
   exit 
 fi
