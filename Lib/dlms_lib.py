@@ -13,12 +13,28 @@ import numpy as np
 def species2str(bead_types, bead_pop):
     """
     * bead_types: e.g. "ABCWEP"
-    * bead_pop: dict of bead population
+    * bead_pop: dict of bead population, e.g. {"A": 500, "B": 500}
+    Ordering: bead type, mass, charge, number, freeze or not
     """
     s = "SPECIES %i\n" % len(bead_types)
     for b in bead_types:
         s += b + "    1.0 0.0 " + str(bead_pop[b])
-        if b == "E" or b == "P":
+        if b == "E" or b == "P":   # freeze platinum or electrode beads
+            s += " 1\n"
+        else:
+            s += " 0\n"
+    return s + "\n"
+
+
+def species2str2(beads):
+    """
+    beads: dict of bead populations, e.g. {"A": 500, "B": 500}
+    Ordering on line: bead type, mass, charge, number, freeze or not
+    """
+    s = "SPECIES %i\n" % len(beads)
+    for bt, bp in beads.items():
+        s += "%s    1.0 0.0 %i" % (bt, bp)
+        if bt in ["E", "P"]:   # freeze platinum or electrode beads
             s += " 1\n"
         else:
             s += " 0\n"
@@ -26,6 +42,11 @@ def species2str(bead_types, bead_pop):
 
 
 def inter2str(a_ij, method="dpd"):
+    """Dictionary of all pair interactions.
+    * key: pair, e.g. "A B"
+    * values: array of [coefficient, rc, gamma]
+    Method: add mddpd in the future
+    """
     s = "INTERACTIONS %i\n" % len(a_ij)
     for k, v in a_ij.items():
         if isinstance(k, tuple):
