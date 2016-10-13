@@ -1,17 +1,19 @@
 #!/usr/bin/env python
 """Usage:
-    op_bin_mixt.py normal [--N <N> --rc <rc> --save]
-    op_bin_mixt.py lc [--N <N> --rc <rc> --nx <nx>]
+    op_bin_mixt.py <frames> [--rc <rc>]
+    op_bin_mixt.py test normal [--N <N> --f <f> --rc <rc> --save]
+    op_bin_mixt.py test linkcells [--N <N> --f <f> --rc <rc> --nx <nx>]
 
-[AD HOC] Test order parameter of a binary mixture.
+Compute order parameter of a binary mixture, using link cells.
 Definition of OP based on Goyal PhD thesis.
 
 Options:
     --N <N>    Number of particles [default: 100]
+    --f <f>    Fraction of A particles [default: 0.5]
     --rc <rc>  Cutoff distance [default: 1.3]
-    --nx <nx>  Link cells boxes [default: 5]
+    --nx <nx>  Link cells boxes in one dim [default: 5]
 
-31/08/16
+03/10/16 (revised)
 """
 import numpy as np
 from numpy.linalg import norm
@@ -19,14 +21,15 @@ from numpy import sqrt
 from numba import jit, float64, int64
 import itertools
 import time
+import glob, sys
 from docopt import docopt
-import lmp_lib as ll
+from lmp_lib import read_xyzfile
 
 
 def gen_ordered_box(N1, N2):
     types = np.array([1]*N1 + [2]*N2)
     xyz1 = np.random.rand(N1, 3) * [L/2, L, L]
-    xyz2 = np.random.rand(N1, 3) * [L/2, L, L]
+    xyz2 = np.random.rand(N2, 3) * [L/2, L, L]
     xyz2[:, 0] += L/2
     xyz = np.vstack((xyz1, xyz2))
     return types, xyz
@@ -36,6 +39,11 @@ def gen_disordered_box(N1, N2):
     types = np.array([1]*N1 + [2]*N2)
     xyz = np.random.rand(N1+N2, 3) * L
     return types, xyz
+
+
+def guess_box_size(xyz):
+    """Infer box size from xyz matrix"""
+    return np.round(np.max(xyz[:, 1] - np.min(xyz[:, 1]), 0))
 
 
 #def dist_vec(types, xyz, L):
@@ -87,8 +95,8 @@ def order_param_naive(types, xyz, L, rc):
             G = inv_box @ dr
             Gn = G - np.round(G)
             drn = box @ Gn
-            d = norm(drn)
-#            d = norm_numba(drn)
+#            d = norm(drn)
+            d = norm_numba(drn)
             if i == j:
                 continue
             if d < rc:
@@ -99,14 +107,13 @@ def order_param_naive(types, xyz, L, rc):
         if n1 + n2 != 0:
             phi = (n1 - n2)**2 / (n1 + n2)**2
             op.append(phi)
-#        else:
-#            print("WARNING: no neighbours within given cutoff.")
-#    print(len(op))
     return sum(op) / len(op)
 
 
 def order_param_lc(types, xyz, lc, L, rc):
     N = len(xyz)
+    N1, N2 = sum(types == 1), sum(types == 2)
+    f1, f2 = N1 / N, N2 / N
     box = L * np.eye(3)
     inv_box = np.linalg.pinv(box)
     dr, drn = np.zeros(3), np.zeros(3)
@@ -129,8 +136,8 @@ def order_param_lc(types, xyz, lc, L, rc):
             G = inv_box @ dr
             Gn = G - np.round(G)
             drn = box @ Gn
-            d = norm(drn)
-#            d = norm_numba(drn)
+#            d = norm(drn)
+            d = norm_numba(drn)
             if i == j:
                 continue
             if d < rc:
@@ -140,6 +147,7 @@ def order_param_lc(types, xyz, lc, L, rc):
                     n2 += 1
         if n1 + n2 != 0:
             phi = (n1 - n2)**2 / (n1 + n2)**2
+#            phi = (n1 - n2 * f1/f2)**2 / (n1 + n2 * f1/f2)**2
             op.append(phi)
     return sum(op) / len(op)
 
@@ -188,61 +196,94 @@ def populate_link_cells(lc, xyz, Lx, Nx):
     * lc: link cells"""
     N = len(xyz)
     for i in range(N):
-        num = xyz[i] // Lx
+        num = xyz[i] // Lx % Nx
         lc[id_from_coord(num, Nx)].append(i)
 
 
 if __name__ == "__main__":
     args = docopt(__doc__)
-    np.random.seed(1234)
-    L = 10.0
-    f = 0.5
-    N = int(args["--N"])
-    N1, N2 = int(f * N), int((1-f) * N)
     rc = float(args["--rc"])
 
+    if not args["test"]:
+        print("===== Order parameter =====")
+        frames = glob.glob(args["<frames>"])
+        Nf = len(frames)
+        if Nf == 0:
+            sys.exit("No files captured.")
+        A = read_xyzfile(frames[0])
+        N = len(A)
+        L = guess_box_size(A[:, 1:])
+        Nx = int(L // rc)    # choose largest possible cell number
+        print("Frames: %i | N: %i | Nx: %i | Box: %.2f" % (Nf, N, Nx, L))
 
-    if args["lc"]:
-        Nx = int(args["--nx"])
-        Lx = L / Nx
-        types, xyz = gen_ordered_box(N1, N2)
-        if Lx < rc:
-            print("WARNING: Link cell size smaller than cutoff radius.")
-        print("Testing link cells.")
-        lc = init_link_cells(Lx, Nx)
-        populate_link_cells(lc, xyz, Lx, Nx)
-#        print(lc)
+        OP = 0.0
         ti = time.time()
-        op = order_param_lc(types, xyz, lc, L, rc)
-        print("=== op: %.3f" % op)
+        for frame in frames:
+            A = read_xyzfile(frame)
+            types, xyz = A[:, 0], A[:, 1:]
+            L = guess_box_size(xyz)
+            Lx = L / Nx
+            lc = init_link_cells(Lx, Nx)
+            populate_link_cells(lc, xyz, Lx, Nx)
+            op = order_param_lc(types, xyz, lc, L, rc)
+            print("%.3f   " % op, end="", flush=True)
+            OP += op / Nf
         tf = time.time()
-        print("Time: %.2f s." % (tf - ti))
+        print("\nOrder parameter: %.3f\nTime: %.2f s." % (OP, tf - ti))
 
 
-    if args["normal"]:
-        print("N: %i | L: %.1f | f: %.2f" % (N, L, f))
-        # order
-        print("Testing ordered box. rc: %.2f" % rc)
-        ti = time.time()
-        types, xyz = gen_ordered_box(N1, N2)
-        op = order_param_naive(types, xyz, L, rc)
-        print("=== op: %.3f" % op)
-        tf = time.time()
-        print("Time: %.2f s." % (tf - ti))
-        
-        if args["--save"]:
-            ll.save_xyzfile("order.xyz", np.vstack((types, xyz.T)).T)
-       
-        # disorder
-        print("Testing disordered box. rc: %.2f" % rc)
-        ti = time.time()
-        types, xyz = gen_disordered_box(N1, N2)
-        op = order_param_naive(types, xyz, L, rc)
-        print("=== op: %.3f" % op)
-        tf = time.time()
-        print("Time: %.2f s." % (tf - ti))
-       
-        if args["--save"]:
-            ll.save_xyzfile("disorder.xyz", np.vstack((types, xyz.T)).T)
+    else:
+        np.random.seed(1234)
+        L = 10.0
+        f = float(args["--f"])
+        N = int(args["--N"])
+        N1, N2 = int(f * N), int((1-f) * N)
+        print("====== Testing order parameter script =====")
+        print("N: %i | L: %.1f | f: %.2f | rc: %.2f" % (N, L, f, rc))
+
+        if args["linkcells"]:
+            Nx = int(args["--nx"])
+            Lx = L / Nx
+            if Lx < rc:
+                print("WARNING: Link cell size smaller than cutoff radius.")
+ 
+            print("Using link cells.\nOrdered box")
+            types, xyz = gen_ordered_box(N1, N2)
+            lc = init_link_cells(Lx, Nx)
+            populate_link_cells(lc, xyz, Lx, Nx)
+            ti = time.time()
+            op = order_param_lc(types, xyz, lc, L, rc)
+            tf = time.time()
+            print("=== op: %.3f\nTime: %.2f s." % (op, tf - ti))
+ 
+            print("Disordered box")
+            types, xyz = gen_disordered_box(N1, N2)
+            lc = init_link_cells(Lx, Nx)
+            populate_link_cells(lc, xyz, Lx, Nx)
+            ti = time.time()
+            op = order_param_lc(types, xyz, lc, L, rc)
+            tf = time.time()
+            print("=== op: %.3f\nTime: %.2f s." % (op, tf - ti))
+ 
+        if args["normal"]:
+            # order
+            print("Ordered box. rc: %.2f" % rc)
+            types, xyz = gen_ordered_box(N1, N2)
+            ti = time.time()
+            op = order_param_naive(types, xyz, L, rc)
+            tf = time.time()
+            print("=== op: %.3f\nTime: %.2f s." % (op, tf - ti))
+            if args["--save"]:
+                ll.save_xyzfile("order.xyz", np.vstack((types, xyz.T)).T)
+           
+            # disorder
+            print("Disordered box. rc: %.2f" % rc)
+            types, xyz = gen_disordered_box(N1, N2)
+            ti = time.time()
+            op = order_param_naive(types, xyz, L, rc)
+            tf = time.time()
+            print("=== op: %.3f\nTime: %.2f s." % (op, tf - ti))
+            if args["--save"]:
+                ll.save_xyzfile("disorder.xyz", np.vstack((types, xyz.T)).T)
 
 
