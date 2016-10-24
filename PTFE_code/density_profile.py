@@ -1,19 +1,17 @@
 #!/usr/bin/env python
 """Usage:
     density_profile.py 3d <frame> (--bead <bt> | water) [options]
-    density_profile.py 2d <frame> (--bead <bt> | water) [options]
+    density_profile.py 2d <frame> <plane> (--bead <bt> | water) [options]
     density_profile.py test <frame> --bead <bt> [options]
 
 Produce density profiles, bulk (3d) or slice (2d) at a given depth.
 For each grid point, look for beads within 3 sigma and smear them with
 f(r) ~ exp( -r^2 / 2 sigma^2)
-TODO
-====
-* Add option to decide which plane to slice through
 
 Arguments:
-    <frame>        xyz frame
+    <frame>        Regex for xyz frame
     <bt>           Bead type 1..n
+    <plane>        In 2d, which plane to profile on ("xy", "yz", "xz")
 
 Options:
     --depth <d>    Where to look for density cut [default: 0.5]
@@ -128,7 +126,6 @@ def get_gridpoint(xyz, r0, lc, sigma, rc, L, Nx):
     """Generate one gridpoint. Pick local points in xyz
     and add the with the weight given by the smearing function"""
     pt = 0.0
-#    xyz = A[:, 1:]
     box = L * np.eye(3)
     inv_box = box / L**2
 
@@ -145,7 +142,6 @@ def get_gridpoint(xyz, r0, lc, sigma, rc, L, Nx):
            Gn = G - np.round(G)
            drn = box @ Gn
            pt += smear_func(drn, sigma, rc)
-#    if pt != 0.0: print("%.2f   " % pt, end="")
     return pt
 
 
@@ -174,7 +170,8 @@ if __name__ == "__main__":
     sigma = float(args["--sigma"])
     rc = float(args["--cut"]) * sigma
 
-    Nx = int(args["--nx"])
+#    Nx = int(args["--nx"])
+    Nx = int(L // rc)
     Lx = L / Nx
     if rc > Lx:
         print("Warning: Smear function rc larger than link cell size.")
@@ -205,7 +202,7 @@ if __name__ == "__main__":
         print("L: %.2f | Water | Beads: %i" % (L, len(xyzC)+len(xyzW)))
     else:
         print("L: %.2f | Beadtype: %i | Beads: %i" % (L, bead, len(xyz)))
-    print("Total cells %i | Cell size: %.2f" % (Nx**3, Lx))
+    print("Nx: %i | Total cells %i | Cell size: %.2f" % (Nx, Nx**3, Lx))
     print("Smearing sigma: %.2f | Cutoff: %.2f" % (sigma, rc))
     print("Density grid size: %.2f | Total points: %i" % (dx, Ngrid**2))
 
@@ -226,21 +223,35 @@ if __name__ == "__main__":
 
 
     if args["2d"]:
+        planes = {"xy": (0, 1), "yz": (1, 2), "xz": (0, 2)}
+        try:
+            plane = planes[args["<plane>"]]
+        except KeyError:
+            sys.exit("Choose plane from 'xy', 'yz', 'xz'.")
+        ax = set([0, 1, 2]).difference(plane)
+        ax = list(ax)[0]
+
         d = float(args["--depth"])
         if d > 1.0 or d < 0.0:
             sys.exit("Depth should be between 0 and 1.")
         print("2d grid | Slice depth at z-coord: %.1f" % (L*d))
         rho = np.zeros((Ngrid, Ngrid))
+        r0 = np.zeros(3)
         ti = time.time()
         if args["water"]:
-            fname = "density_2d_water_d%.1f.out" % d
+            fname = "density_2d_water_%s_x%.2f.out" % \
+                    (args["<plane>"], dx)
             for i in range(Ngrid):
                 for j in range(Ngrid):
-                    r0 = np.array([x[i], x[j], L*d])
+                    r0[plane[0]] = x[i]
+                    r0[plane[1]] = x[j]
+                    r0[ax] = L * d
+#                    r0 = np.array([x[i], x[j], L*d])
                     rho[i, j] += get_gridpoint(xyzC, r0, lcC, sigma, rc, L, Nx) / 2
                     rho[i, j] += get_gridpoint(xyzW, r0, lcW, sigma, rc, L, Nx)
         if args["--bead"]:
-            fname = "density_2d_b%i_d%.1f.out" % (bead, d)
+            fname = "density_2d_b%i_%s_x%.2f.out" % \
+                    (bead, args["<plane>"], dx)
             for i in range(Ngrid):
                 for j in range(Ngrid):
                     r0 = np.array([x[i], x[j], d * L])
