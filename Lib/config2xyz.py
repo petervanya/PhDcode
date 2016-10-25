@@ -20,8 +20,9 @@ def save_xyzfile(fname, names, xyz):
     with open(fname, "w") as f:
         f.write(str(N) + "\nbla\n")
         for i in range(len(names)):
-            f.write("%s\t%f\t%f\t%f\n" % (names[i], xyz[i, 0], xyz[i, 1], xyz[i, 2]))
-    print("xyz file saved in %s" % fname)
+            f.write("%s\t%f\t%f\t%f\n" % \
+                   (names[i], xyz[i, 0], xyz[i, 1], xyz[i, 2]))
+    print("xyz file saved in %s." % fname)
 
 
 if __name__ == "__main__":
@@ -30,8 +31,7 @@ if __name__ == "__main__":
     try:
         conf_str = open(infile, "r").readlines()
     except FileNotFoundError:
-        print("File not found:", infile)
-        sys.exit()
+        sys.exit("File not found: %s." % infile)
 
     levcfg, imcon = (int(s) for s in conf_str[1].split())
     if imcon == 0:     # no box coordinates

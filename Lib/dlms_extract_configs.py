@@ -1,17 +1,18 @@
 #!/usr/bin/env python
 """Usage:
-    dlms_extract_configs.py <frames> [--levcfg <levcfg> --nafion]
+    dlms_extract_configs.py <nf> [--levcfg <levcfg> --nafion --histpath <hp>]
 
 Extact config frames from DL_MESO HISTORY files, 
 convert them to xyz files and place into Dump/ directory.
 BEFORE: place DL_MESO script history_config.exe INTO Lib/Extern directory.
 
 Arguments:
-    --frames            Number of config files requested [default: 10]
+    <nf>             Number of config frames requested [default: 10]
 
 Options:
-    --levcfg <levcfg>   Configuration level [default: 0]
-    --nafion            Bead ordering "ABCWEP"
+    --levcfg <lc>    Configuration level [default: 0]
+    --nafion         Bead ordering "ABCWEP"
+    --histpath <hp>  Path of the DL_MESO 'history_config.exe' file
 
 21/06/16
 """
@@ -22,10 +23,10 @@ from docopt import docopt
 
 
 def get_timesteps():
-    """Number of frames stored in HISTORY"""
+    """Extract number of frames stored in HISTORY binaries
+    from CONTROL file."""
     if not os.path.isfile("CONTROL"):
-        print("No CONTROL file present.")
-        sys.exit()
+        sys.exit("No CONTROL file present.")
     with open("CONTROL") as f:
         for line in f:
             line = line.rstrip()
@@ -37,10 +38,12 @@ def get_timesteps():
 
 
 args = docopt(__doc__)
-Nf = int(args["<frames>"])
+Nf = int(args["<nf>"])
 levcfg = int(args["--levcfg"])
 
-# number of cores
+# get number of cores
+if not (os.path.isfile("HISTORY") or os.path.isfile("HISTORY000001")):
+    sys.exit("No HISTORY* files in the current directory.")
 pipe = Popen("ls -l HISTORY* | wc -l", stdout=PIPE, shell=True)
 Nc = int(pipe.communicate()[0])
 
@@ -60,6 +63,10 @@ if not os.path.exists("Dump"):
 #     mv CONFIG.xyz Dump/dump_${i}.xyz
 # done
 
+if not args["--histpath"]:
+    hist_path = "~/Res/PhDcode/Lib/Extern/"
+else:
+    hist_path = args["--histpath"]
 hist_script = os.path.expanduser("~/Res/PhDcode/Lib/Extern/history_config.exe")
 transf_script = os.path.expanduser("~/Res/PhDcode/Lib/config2xyz.py")
 nafion_flag = "--nafion" if args["--nafion"] else ""
@@ -70,6 +77,7 @@ if not os.path.isfile(transf_script):
 
 for i in range(Nhf-Nf+1, Nhf+1):
     cmd = "%s %i %i %i" % (hist_script, Nc, levcfg, i)
+    print("Running: %s" % cmd)
     subprocess.call(cmd, shell=True)
     subprocess.call("%s CONFIG.out --shift %s" % \
                    (transf_script, nafion_flag), shell=True)
