@@ -14,7 +14,7 @@ Arguments:
     <plane>        In 2d, which plane to profile on ("xy", "yz", "xz")
 
 Options:
-    --depth <d>    Where to look for density cut [default: 0.5]
+    --depth <d>    Where to cut the plane, relative units [default: 0.5]
     --grid <dx>    Grid spacing in DPD units [default: 0.25]
     --sigma <s>    Sigma of smearing function [default: 0.4]
     --cut <rc>     Cutoff in sigmas [default: 3]
@@ -239,8 +239,8 @@ if __name__ == "__main__":
         r0 = np.zeros(3)
         ti = time.time()
         if args["water"]:
-            fname = "density_2d_water_%s_x%.2f.out" % \
-                    (args["<plane>"], dx)
+            fname = "density_2d_water_%s_dx%.2f_x%.2f.out" % \
+                    (args["<plane>"], dx, d)
             for i in range(Ngrid):
                 for j in range(Ngrid):
                     r0[plane[0]] = x[i]
@@ -250,8 +250,8 @@ if __name__ == "__main__":
                     rho[i, j] += get_gridpoint(xyzC, r0, lcC, sigma, rc, L, Nx) / 2
                     rho[i, j] += get_gridpoint(xyzW, r0, lcW, sigma, rc, L, Nx)
         if args["--bead"]:
-            fname = "density_2d_b%i_%s_x%.2f.out" % \
-                    (bead, args["<plane>"], dx)
+            fname = "density_2d_b%i_%s_dx%.2f_x%.2f.out" % \
+                    (bead, args["<plane>"], dx, d)
             for i in range(Ngrid):
                 for j in range(Ngrid):
                     r0 = np.array([x[i], x[j], d * L])
