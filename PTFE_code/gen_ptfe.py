@@ -297,7 +297,7 @@ if __name__ == "__main__":
                                       bond_type="harm", k0=k0, r0=r0)
         field_string = "bla\n\n" +\
                        dlms.species2str(bead_types, bead_pop) +\
-                       dlms.inter2str(a_ij, method="dpd") + \
+                       dlms.inter2str(a_ij) + \
                        "MOLECULES 1\n" + \
                        nafion_mol_str + "\n" + \
                        "close\n"
