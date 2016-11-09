@@ -81,6 +81,6 @@ for i in range(Nhf-Nf+1, Nhf+1):
     subprocess.call(cmd, shell=True)
     subprocess.call("%s CONFIG.out --shift %s" % \
                    (transf_script, nafion_flag), shell=True)
-    subprocess.call("mv CONFIG.xyz Dump/dump_%i.xyz" % i, shell=True)
+    subprocess.call("mv CONFIG.xyz Dump/dump_%03i.xyz" % i, shell=True)
 
 
