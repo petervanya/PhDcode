@@ -29,7 +29,7 @@ def species2str(bead_types, bead_pop):
 def species2str2(beads):
     """
     beads: dict of bead populations, e.g. {"A": 500, "B": 500}
-    Ordering on line: bead type, mass, charge, number, freeze or not
+    Ordering on line: bead type, mass, charge, number, freeze (or not)
     """
     s = "SPECIES %i\n" % len(beads)
     for bt, bp in beads.items():
@@ -41,7 +41,7 @@ def species2str2(beads):
     return s + "\n"
 
 
-def inter2str(a_ij, method="dpd"):
+def inter2str(a_ij):
     """Dictionary of all pair interactions.
     * key: pair, e.g. "A B"
     * values: array of [coefficient, rc, gamma]
@@ -50,14 +50,35 @@ def inter2str(a_ij, method="dpd"):
     s = "INTERACTIONS %i\n" % len(a_ij)
     for k, v in a_ij.items():
         if isinstance(k, tuple):
-            s += "%s %s    %s   %.3f  %.1f  %.2f\n" % \
-                 (k[0], k[1], method, v[0], v[1], v[2])
+            s += "%s %s    %s   %.3f  %.1f  %.2f\n" \
+                % (k[0], k[1], "dpd", v[0], v[1], v[2])
         else:
-            s += "%s    %s   %.3f  %.1f  %.2f\n" % (k, method, v[0], v[1], v[2])
+            s += "%s    %s   %.3f  %.1f  %.2f\n" \
+                % (k, "dpd", v[0], v[1], v[2])
     return s + "\n"
 
 
-def mol2str(molname, Nmols, bead_list, bond_mat, bond_type="harm", k0=4.0, r0=0.1):
+def inter2str_mdpd(a_ij):
+    """Dictionary of all pair interactions for many-body DPD.
+    * key: pair, e.g. "A B"
+    * values: array of [coefficient, rc, gamma]
+    Method: add mddpd in the future
+    """
+    s = "INTERACTIONS %i\n" % len(a_ij)
+    for k, v in a_ij.items():
+        if isinstance(k, tuple): # MODIFY!
+            s += "%s %s    %s   " % (k[0], k[1], "mdpd")
+            s += "%.3f  %.3f  %.1f  %.1f  %.1f  %.1f  %.2f\n" \
+                % (v[0], v[1], v[2], v[3], v[4], v[5], v[6])
+        else:
+            s += "%s    %s   " % (k, "mdpd")
+            s += "%.3f  %.3f  %.1f  %.1f  %.1f  %.1f  %.2f\n" \
+                % (v[0], v[1], v[2], v[3], v[4], v[5], v[6])
+    return s + "\n"
+
+
+def mol2str(molname, Nmols, bead_list, bond_mat, bond_type="harm", \
+    k0=4.0, r0=0.1):
     """Input:
     * molecule name
     * Nmols: number of molecules of this type
@@ -85,7 +106,7 @@ def save_config(fname, names, xyz, imcon=0):
     """Save positions into file
     * imcom: include box coords (0 or 1)"""
     N = len(xyz)
-    conf_str = "pokus\n" + "0\t%i\n" % imcon
+    conf_str = "bla\n" + "0\t%i\n" % imcon
     if imcon == 1:
         box = L*np.eye(3)
         for i in range(len(box)):
@@ -93,20 +114,24 @@ def save_config(fname, names, xyz, imcon=0):
 
     for i in range(N):
         conf_str += "%s        %i\n" % (names[i], i+1)
-        # careful about the spaces
-        conf_str += "    %.10f    %.10f    %.10f\n" % (xyz[i, 0], xyz[i, 1], xyz[i, 2])
+        # careful about the spaces!
+        conf_str += "    %.10f    %.10f    %.10f\n" \
+            % (xyz[i, 0], xyz[i, 1], xyz[i, 2])
 
     open(fname, "w").write(conf_str)
     print("Initial configuration saved in %s." % fname)
 
 
 # ===== CONTROL file
-def gen_control(L, dt, steps, thermo=100, halo=2.5, traj_after=20000, kT=1.0):
-    s = "pokus\n\n"
+def gen_control(L, dt, steps, thermo=100, halo=2.5, traj_after=20000, \
+    kT=1.0, method="dpd", rd=0.75):
+    s = "bla\n\n"
     
     s += "volume %.2f\n" % L**3
     s += "temperature 1.0\n"
     s += "cutoff 1.0\n"
+    if method == "mdpd":
+        s += "manybody cutoff %.2f\n" % rd
     s += "boundary halo %.1f\n\n" % halo
     
     s += "timestep %.3f\n" % dt
