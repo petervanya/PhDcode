@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 """Usage:
-    g09mnpl.py gen_header [--nproc <np>] [--method <method>] [--basis <bs>] 
+    g09mnpl.py gen_header [--nproc <np>] [--method <m>] [--basis <bs>] 
                           [--opt] [--freq] [--scfsteps <scf>] [--misc <misc>]
     g09mnpl.py parse_coords <file> (--input | --final)
-    g09mnpl.py gen_gjf from_xyz <files> [--header <header>] [--save]
+    g09mnpl.py gen_gjf from_xyz <files> [--header <h>] [--save]
     g09mnpl.py gen_gjf from_out <file> <newname>
     g09mnpl.py extract energies <files>  [--save <datafile>]
 
@@ -16,22 +16,21 @@ Collection of method to manipulate files entering or leaving Gaussian.
 
 Options:
     --nproc <np>         Number of processors to use [default: 16]
-    --method <method>    Qchem method [default: B3LYP]
+    --method <m>         Qchem method [default: B3LYP]
     --basis <bs>         Basis set [default: 6-31g*]
     --opt                Produce "Opt" flag
     --freq               Produce "Freq" flag
     --scfsteps <scf>     Number of self-consistent steps [default: 1000]
     --misc <misc>        Various other keywords
-    --header <header>    Set Gaussian header
+    --header <h>         Set Gaussian header
 
 pv278@cam.ac.uk, 06/10/15
 """
 import numpy as np
 import pandas as pd
 import glob, os, sys, re
-import logging
 from docopt import docopt
-from xyzlib import Atoms
+from xyz_lib import Atoms
 
 
 def parse_input_coords(infile):
@@ -72,29 +71,28 @@ def gen_header(p):
 
  
 def get_params(args):
-    """Get parameters from command line arguments for the Gaussian header"""
+    """Get parameters from command line arguments
+    for Gaussian header"""
     params = {}
     params["np"] = args["--nproc"]
     params["method"] = args["--method"]
     params["basis"] = args["--basis"]
     params["opt"] = "Opt" if args["--opt"] else ""
     params["freq"] = "Freq" if args["--freq"] else ""
-    params["scf"] = "scf=(direct, maxcycle=%s)" % args["--scfsteps"] if args["--scfsteps"] else ""
+    params["scf"] = "scf=(direct, maxcycle=%s)" % args["--scfsteps"] \
+            if args["--scfsteps"] else ""
     params["misc"] = args["--misc"] if args["--misc"] else ""
     return params 
 
 
 if __name__ == "__main__":
     args = docopt(__doc__)
-    logging.basicConfig(filename="debug.log", filemode="w", level=logging.DEBUG, format="%(message)s")
-    logging.info("Script: " + __file__)
-    logging.info("Args:\n" + str(args))
-    default_header = "%nproc=16\n#T B3LYP/6-31G* Test\n\nBlabla\n\n"  # AD HOC SOLUTION
+    default_header = "%nproc=16\n#T B3LYP/6-31G* Test\n\nBlabla\n\n"  # AD HOC SOL
     params = get_params(args)
 
     if args["gen_header"]:
         header = gen_header(params)
-        print header
+        print(header)
     
     if args["parse_coords"]:    #TO TEST
         infile = args["<file>"]
@@ -103,28 +101,40 @@ if __name__ == "__main__":
             if args["--save"]:
                 A.save(args["--save"], args["--vmd"])
             else:
-                print A
+                print(A)
         if args["--final"]:
             B = parse_last_coords(infile)
             if args["--save"]:
                 B.save(args["--save"], args["--vmd"])
             else:
-                print B
+                print(B)
 
-    elif args["gen_gjf"]:   # MAKE THIS QUICKER, NOW TOO SLOW
+    elif args["gen_gjf"]:
         if args["from_xyz"]:
-            xyzfiles = glob.glob(args["<files>"])
-            A = Atoms().read(xyzfiles[0])
-            if len(xyzfiles) > 0:
-                for xyzfile in xyzfiles[1:]:
-                    A = A + Atoms().read(xyzfile)
+            xyzfile = args["<files>"]
+            A = Atoms().read(xyzfile)
             if args["--header"]:
                 string = args["--header"] + "\n\n" + str(A) + "\n\n"
             else:
                 string = default_header + str(A) + "\n\n"
-            fname = xyzfiles[0].rstrip("xyz") + "gjf"
+            fname = xyzfile.rstrip("xyz") + "gjf"
             open(fname, "w").write(string)
-            print "gjf file written into", fname
+            print("gjf file written into %s." % fname)
+
+#        if args["from_xyz"]:   # MAKE THIS QUICKER, NOW TOO SLOW
+#            xyzfiles = glob.glob(args["<files>"])
+##            xyzfiles = args["<files>"]
+#            A = Atoms().read(xyzfiles[0])
+#            if len(xyzfiles) > 0:
+#                for xyzfile in xyzfiles[1:]:
+#                    A = A + Atoms().read(xyzfile)
+#            if args["--header"]:
+#                string = args["--header"] + "\n\n" + str(A) + "\n\n"
+#            else:
+#                string = default_header + str(A) + "\n\n"
+#            fname = xyzfiles[0].rstrip("xyz") + "gjf"
+#            open(fname, "w").write(string)
+#            print("gjf file written into", fname)
 
         if args["from_out"]:  #TO TEST, EXTRACT HEADER FROM OUTFILE
             outfile = args["<file>"]
@@ -138,20 +148,22 @@ if __name__ == "__main__":
             header = nproc + route + "\nBlabla\n\n"
             newfname = args["<newname>"]
             open(newfname, "w").write(header + str(A) + "\n\n")
-            print "gjf file written into", newfname
+            print("gjf file written into", newfname)
 
     if args["extract"] and args["energies"]:
         outfiles = glob.glob(args["<files>"])
-        print outfiles
+        print(outfiles)
         positions, energies = [], []
         
         for outfile in outfiles:
             outfile = os.getcwd() + "/" + outfile
-            E_line = [line for line in open(outfile, "r").readlines() if "SCF Done" in line]
+            E_line = [line for line in open(outfile, "r").readlines() \
+                    if "SCF Done" in line]
             if E_line:       # if energy line exists
                 E_line = E_line[0]
                 energies.append(float(E_line.split()[4]))
-                pos = re.search(r"(?<=_d)[^}]*(?=.out)", outfile) # find distance in file name, NOT GENERAL ENOUGH FOR THIS SCRIPT
+                # find distance in file name, NOT GENERAL FOR THIS SCRIPT
+                pos = re.search(r"(?<=_d)[^}]*(?=.out)", outfile)
                 pos = pos.group()
                 positions.append(float(pos))
         
@@ -159,10 +171,10 @@ if __name__ == "__main__":
             sys.exit()
         tbl = pd.DataFrame(energies, index=positions).sort_index()
         tbl.columns = ["E"]
-        print tbl
+        print(tbl)
         if args["<datafile>"]:
             datapath = args["<datafile>"]
             tbl.to_csv(datapath, sep="\t", header=False)
-            print "Table saved in ", datapath
+            print("Table saved in ", datapath)
 
 
