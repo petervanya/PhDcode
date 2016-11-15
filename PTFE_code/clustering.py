@@ -6,7 +6,7 @@ Use flood fill algorithm to find size and number of these clusters.
 
 Arguments:
     <file>    2d density profile
-    <rc>      Cutoff for density between 0 and 1
+    <rc>      Cutoff for density, usually between 0 and 3
 
 Options:
     --save    Create png plot of clusters
@@ -54,13 +54,12 @@ if __name__ == "__main__":
     N = len(A)
     max_rho, min_rho = np.max(A), np.min(A)
     rc = float(args["<rc>"])
-    if rc < 0 or rc > 1:
-        sys.exit("Enter rc between 0 and 1.")
-    rc = 3.0 * rc
 
     B = np.zeros((N, N)).astype(int)
     B[A > rc] = 1
     Nfull = np.sum(B == 1)
+    if Nfull == 0:
+        sys.exit("No clusters captured, too high cutoff.")
     print("====== Clustering water =====")
     print("Reading file: %s" % fname)
     print("Matrix Size: (%i, %i)" % A.shape)
@@ -72,10 +71,14 @@ if __name__ == "__main__":
         figdir = "Clustering"
         if not os.path.isdir(figdir):
             os.path.makedirs(figdir)
+        fig = plt.figure()
+        ax = plt.axes()
         plt.spy(B)
-        plt.axis("off")
+#        plt.axis("off")
+        ax.get_xaxis().set_visible(False)
+        ax.get_yaxis().set_visible(False)
         figname = "clustering_rc%.2f.png" % rc
-        plt.savefig(figdir + "/" + figname)
+        plt.savefig(figdir + "/" + figname, bbox_inches="tight")
 
     sizes = []
     nc = 0
