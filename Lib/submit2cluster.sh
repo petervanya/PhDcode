@@ -40,7 +40,7 @@ fi
 
 # Gaussian commands                                                             
 g09root="/home/Gaussian"
-GAUSS_SCRDIR="/raid/Gaussian_scratch"
+#  GAUSS_SCRDIR="/raid/home/Gaussian_scratch"
 GAUSS_EXEDIR="/home/Gaussian/g09/bsd:/home/Gaussian/g09/private:/home/Gaussian/g09"
 export g09root GAUSS_SCRDIR GAUSS_EXEDIR
 . $g09root/g09/bsd/g09.profile
