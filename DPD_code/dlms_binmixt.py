@@ -52,9 +52,11 @@ if __name__ == "__main__":
     conf_str = "bla\n" + "0\t" + str(levcfg) + "\n"
     for i in range(N):
         conf_str += "%s        %i\n" % (names[i], (i+1))
-        conf_str += "    %.10f    %.10f    %.10f\n" % (xyz[i, 0], xyz[i, 1], xyz[i, 2])
+        conf_str += "    %.10f    %.10f    %.10f\n" % \
+                (xyz[i, 0], xyz[i, 1], xyz[i, 2])
         if levcfg == 1:
-            conf_str += "    %.10f    %.10f    %.10f\n" % (vel[i, 0], vel[i, 1], vel[i, 2])
+            conf_str += "    %.10f    %.10f    %.10f\n" % \
+                    (vel[i, 0], vel[i, 1], vel[i, 2])
 
     fname = "CONFIG"
     open(fname, "w").write(conf_str)
