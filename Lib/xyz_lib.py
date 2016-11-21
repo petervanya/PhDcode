@@ -110,24 +110,30 @@ class Atoms:
 
     def read(self, fname):
         """Read the structure from an xyz file"""
+        try:
+            s = open(fname, "r").readlines()
+        except FileNotFoundError:
+            sys.exit("File %s not found." % fname)
+
+        if len(s) < 2:
+            sys.exit("Too few lines to process.")
+
         if fname[-3:] != "xyz":
-            print("Class", self.__class__.__name__, ": xyz file \
-                   to read should have extension 'xyz'.")
-            sys.exit()
-        with open(fname) as f:
-            string = f.readlines()
-            firstline = string[0].split()
-            if len(firstline) == 4:     # no charge/spin line
-                charge, spin = (0, 1)
-                M = np.array([line.split() for line in string])
-            if len(firstline) == 2:     # standard format
-                charge, spin = [int(s) for s in firstline]
-                M = np.array([line.split() for line in string[1:]])
-            elif len(firstline) == 1:   # VMD format
-                charge, spin = (0, 1)
-                M = np.array([line.split() for line in string[2:]])
-            names = M[:, 0]
-            xyz = M[:, 1:4].astype(np.float)
+            sys.exit("Class", self.__class__.__name__, ": xyz file \
+                    to read should have extension 'xyz'.")
+
+        firstline = s[0].split()
+        if len(firstline) == 4:     # no charge/spin line
+            charge, spin = (0, 1)
+            M = np.array([line.split() for line in s])
+        if len(firstline) == 2:     # standard format
+            charge, spin = [int(s) for s in firstline]
+            M = np.array([line.split() for line in s[1:]])
+        elif len(firstline) == 1:   # VMD format
+            charge, spin = (0, 1)
+            M = np.array([line.split() for line in s[2:]])
+        names = M[:, 0]
+        xyz = M[:, 1:4].astype(np.float)
         return Atoms(names, xyz, charge, spin)
 
 
