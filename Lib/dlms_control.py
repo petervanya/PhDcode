@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 """Usage:
     dlms_control.py [--L <L> --dt <dt> --steps <n> --startstep <st>]
-                    [--thermo <th> --halo <h>]
+                    [--thermo <th> --halo <h> --eq <Neq>]
 
 Generate DL_MESO control file.
 
@@ -10,6 +10,7 @@ Options:
      --dt <dt>          Timestep [default: 0.05]
      --steps <n>        Number of simulation steps [default: 10000]
      --startstep <st>   Start timestep for dumping frames [default: 0]
+     --eq <Neq>         Equilibration steps [default: 0]
      --thermo <th>      Print every [default: 100]
      --halo <h>         Boundary halo, like neighbor [default: 2.5]
 
@@ -26,6 +27,7 @@ N = int(args["--steps"])
 startstep = int(args["--startstep"])
 thermo = int(args["--thermo"])
 halo = float(args["--halo"])
+eqsteps = int(args["--eq"])
 
 
 s = "pokus\n\n"
@@ -37,7 +39,7 @@ s += "boundary halo %.1f\n\n" % halo
 
 s += "timestep %.3f\n" % dt
 s += "steps %i\n" % N
-s += "equilibration steps 0\n"
+s += "equilibration steps %i\n" % eqsteps
 s += "scale temperature every 10\n"
 s += "trajectory %i 100\n" % startstep
 s += "stats every 100\n"

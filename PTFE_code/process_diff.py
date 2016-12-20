@@ -32,6 +32,8 @@ matplotlib.rcParams.update({'font.size': 16})
 
 
 def collect_data(default_path, elects_d, widths, lmbdas):
+    """Visit directory for each slab width and lmbda and
+    parse the outfile for 1d, 2d, and 3d diffusivities"""
     cols = ["elect", "d", "lmbda", \
             "Dx", "Dy", "Dz", "Dxy", "Dyz", "Dxz", "D3d"]
     index = np.arange(len(lmbdas) * len(widths) * len(elects_d))
@@ -133,7 +135,7 @@ if __name__ == "__main__":
         dfpath = args["<dfpath>"]
         df = pd.read_csv(dfpath)
         to_pdf = args["--pdf"]
-        if to_pdf:   # use latex for everything
+        if to_pdf:           # use latex fonts
             plt.rc('text', usetex=True)
             plt.rc('font', family='serif')
 

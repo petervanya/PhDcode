@@ -199,7 +199,7 @@ if __name__ == "__main__":
 
     print("===== Density profile =====")
     if args["water"]:
-        print("L: %.2f | Water | Beads: %i" % (L, len(xyzC)+len(xyzW)))
+        print("L: %.2f | Water | Beads: %i" % (L, len(xyzC) + len(xyzW)))
     else:
         print("L: %.2f | Beadtype: %i | Beads: %i" % (L, bead, len(xyz)))
     print("Nx: %i | Total cells %i | Cell size: %.2f" % (Nx, Nx**3, Lx))
@@ -268,7 +268,7 @@ if __name__ == "__main__":
         rho = np.zeros((Ngrid**3, 4))
         ti = time.time()
         if args["water"]:
-            fname = "density_3d_water.out"
+            fname = "density_3d_water_dx%.2f.out" % dx
             for i in range(Ngrid):
                 for j in range(Ngrid):
                     for k in range(Ngrid):
@@ -278,14 +278,16 @@ if __name__ == "__main__":
                         rho[i*Ngrid**2 + j*Ngrid + k] = [x[i], x[j], x[k], gp]
                 print("Slice %i/%i done. %.2f s" % (i+1, Ngrid, time.time() - ti))
         if args["--bead"]:
-            fname = "density_3d_b%i.out" % bead
+            fname = "density_3d_b%i_dx%.2f.out" % (bead, dx)
             for i in range(Ngrid):
                 for j in range(Ngrid):
                     for k in range(Ngrid):
                         r0 = np.array([x[i], x[j], x[k]])
                         rho[i*Ngrid**2 + j*Ngrid + k] = \
-                            [x[i], x[j], x[k], get_gridpoint(xyz, r0, lc, sigma, rc, L, Nx)]
-                print("Slice %i/%i done. %.2f s" % (i+1, Ngrid, time.time() - ti))
+                            [x[i], x[j], x[k], \
+                            get_gridpoint(xyz, r0, lc, sigma, rc, L, Nx)]
+                print("Slice %i/%i done. %.2f s" % \
+                        (i+1, Ngrid, time.time() - ti), flush=True)
         tf = time.time()
         print("Final time: %.2f s." % (tf - ti))
         

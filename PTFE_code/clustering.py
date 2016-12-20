@@ -1,5 +1,6 @@
 #!/usr/bin/env python
-"""Usage: clusterng.py <file> <rc> [--save]
+"""Usage: 
+    clusterng.py <file> <rc> [--save]
 
 Read water heat map, select cutoff turn into black clusters.
 Use flood fill algorithm to find size and number of these clusters.
@@ -21,7 +22,7 @@ from docopt import docopt
 
 
 def coord2id(coord, N):
-    return coord[0]*N + coord[1]
+    return coord[0] * N + coord[1]
 
 
 def id2coord(ID, N):
@@ -50,10 +51,13 @@ if __name__ == "__main__":
     args = docopt(__doc__)
     sys.setrecursionlimit(int(1e6))
     fname = args["<file>"]
+    rc = float(args["<rc>"])
+
     A = np.loadtxt(fname)
     N = len(A)
     max_rho, min_rho = np.max(A), np.min(A)
-    rc = float(args["<rc>"])
+    dx = [i for i in fname.split("_") if "dx" in i][0].lstrip("dx")
+    dx = float(dx)
 
     B = np.zeros((N, N)).astype(int)
     B[A > rc] = 1
@@ -62,19 +66,18 @@ if __name__ == "__main__":
         sys.exit("No clusters captured, too high cutoff.")
     print("====== Clustering water =====")
     print("Reading file: %s" % fname)
-    print("Matrix Size: (%i, %i)" % A.shape)
+    print("Matrix Size:", A.shape, "| Grid size dx: %.2f" % dx)
     print("Max / min density: %.2f / %.2f | cutoff: %.2f" \
             % (max_rho, min_rho, rc))
-    print("Number of full fields: %i / %i | %.2f" % (Nfull, N**2, Nfull/N**2))
+    print("Full fields: %i / %i | %.2f" % (Nfull, N**2, Nfull/N**2))
 
     if args["--save"]:
         figdir = "Clustering"
         if not os.path.isdir(figdir):
-            os.path.makedirs(figdir)
+            os.makedirs(figdir)
         fig = plt.figure()
         ax = plt.axes()
         plt.spy(B)
-#        plt.axis("off")
         ax.get_xaxis().set_visible(False)
         ax.get_yaxis().set_visible(False)
         figname = "clustering_rc%.2f.png" % rc
@@ -84,19 +87,19 @@ if __name__ == "__main__":
     nc = 0
     print("Starting clustering... ", end="", flush=True)
     ti = time.time()
-    for i in range(N*N):
+    for i in range(N**2):
         start = id2coord(i, N)
         if B[start] == 1:
             flood_fill(B, start, 1, 2)
             ncurr = np.sum(B == 2)
-            sizes.append(ncurr - nc)
+            sizes.append((ncurr - nc) * dx**2)  # conver to DPD units
             nc = ncurr
 
     tf = time.time()
     print("Done. Time: %.2f s." % (tf - ti))
     sizes.sort(reverse=True)
     print(sizes)
-    Pinf = np.max(sizes) / np.sum(sizes)
+    Pinf = np.max(sizes) / (N * dx)**2
 
     Nc = len(sizes)
     Savg = np.average(sizes)

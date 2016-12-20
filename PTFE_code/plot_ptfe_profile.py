@@ -24,7 +24,7 @@ matplotlib.rcParams.update({'font.size': 16})
 args = docopt(__doc__)
 fileW, fileB = args["<fileW>"], args["<fileB>"]
 if not os.path.isfile(fileW) or not os.path.isfile(fileB):
-    sys.exit("One or two files not found.")
+    sys.exit("One or two files not found. Input: %s, %s" % (fileW, fileB))
 
 print("Plotting: %s | %s" % (fileW, fileB))
     

@@ -35,7 +35,7 @@ if __name__ == "__main__":
     N = int(rho * L**3) // 10 * 10     # round to 10
     if f < 0.0 or f > 1.0:
         sys.exit("Fraction f of A beads must be between 0 and 1.")
-    print("N: %i | L: %.1f | rho: %.1f | fraction: %.1f" % (N, L, rho, f))
+    print("N: %i | L: %.1f | rho: %.1f | fraction: %.2f" % (N, L, rho, f))
 
     NA = int(f * N)
     NB = N - NA
