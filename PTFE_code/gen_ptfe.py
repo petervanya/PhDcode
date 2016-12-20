@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """Usage:
-    gen_ptfe.py <input> (dlms | lammps) [--xyz <xyz>]
+    gen_ptfe.py <input> (dlms | lammps) [--xyz]
 
 Generate Nafion input files to feed into a DPD software suite.
 Options:
@@ -9,12 +9,12 @@ Options:
 Read input from input.yaml file.
 
 Options:
-    --xyz <xyz>    Save coordinates into xyz file
+    --xyz     Save coordinates into xyz file
 
 pv278@cam.ac.uk, 17/06/16
 """
 import numpy as np
-from numpy import pi, cos, sin
+from math import pi, cos, sin, acos
 import sys
 import yaml
 from docopt import docopt
@@ -49,44 +49,47 @@ def set_electrodes(data, L):
         *-----------*
          Lcl
     """
-    Lcl = data["electrodes"]["width"]  # electrode layer width
+#    Lcl = data["electrodes"]["width"]  # electrode layer width
+    Lslab = data["electrodes"]["width"]
+    print(Lslab, Lslab * 1e-9 / rc)
+    Lcl = (L - Lslab * 1e-9 / rc) / 2
     if Lcl > L/2:
         sys.exit("Electrode layer thicker than membrane.")
 
-    if Lcl > 1e-5:
-        Pt_ratio = data["electrodes"]["Pt-ratio"]
-        elmat = data["electrodes"]["material"]
-        Lpt = L * Pt_ratio
-        Vcl = 2 * Lcl * L**2
-        print("Electrodes on | Width: %.2f | Material: %s" % (Lcl, elmat))
+#    if Lcl > 1e-5:
+    elmat = data["electrodes"]["material"]
+    Pt_ratio = data["electrodes"]["Pt-ratio"]
+    Lpt = L * Pt_ratio
+    Vcl = 2 * Lcl * L**2
+    print("Electrodes on | El. width: %.2f | Material: %s" % (Lcl, elmat))
 
-        Nelb = int(rho_DPD * int(Vcl))     # not (4*pi/3*rc**3), must be cubes
-        Nsup = int((1-Pt_ratio) * Nelb)
-        Npt = int(Pt_ratio * Nelb)
-        if Nsup%2 != 0: Nsup += 1
-        if Npt%2 != 0: Npt += 1
-        print("Electrode beads: %i | Support: %i | Pt: %i" % (Nelb, Nsup, Npt))
-    else:
-        Lcl, Lpt = 0.0, 0.0
-        Nsup, Npt = 0, 0
-        print("Electrodes off.")
+    Nelb = int(rho_DPD * int(Vcl))     # not (4*pi/3*rc**3), must be cubes
+    Nsup = int((1 - Pt_ratio) * Nelb)  # support beads
+    Npt = int(Pt_ratio * Nelb)         # platinum beads
+    if Nsup % 2 != 0: Nsup += 1
+    if Npt % 2 != 0: Npt += 1
+    print("Electrode beads: %i | Support: %i | Pt: %i" % (Nelb, Nsup, Npt))
+#    else:
+#        print("Electrodes off.")
+#        Lcl, Lpt = 0.0, 0.0
+#        Nsup, Npt = 0, 0
     return Lcl, Lpt, Nsup, Npt
 
 
 def calc_nc_nw(N, Nmc, Nbm, lmbda):
     """Return number of water beads and chains based on 
     universal DPD density, number of beads and water uptake"""
-    const = (lmbda-3)/6.0
-    Nc = N/(Nmc*(const + Nbm))
-    Nw = const*Nmc*Nc
+    const = (lmbda - 3) / 6.0
+    Nc = N / (Nmc * (const + Nbm))
+    Nw = const * Nmc * Nc
     return int(Nc), int(Nw)
 
 
 def grow_polymer(Nbm, Nc, Nmc, L, Lcl, mu):
     """Generate xyz matrix from a given number of chains,
     by stacking one bead next to another in distance mu"""
-    Nbc = Nbm*Nmc       # num beads per chain
-    xyz = np.zeros((Nc*Nbc, 3))
+    Nbc = Nbm * Nmc       # num beads per chain
+    xyz = np.zeros((Nc * Nbc, 3))
     for i in range(Nc):
         xyz[i*Nbc : (i+1)*Nbc] = grow_one_chain(Nbm, Nmc, L, Lcl, mu)
     return xyz
@@ -98,13 +101,14 @@ def grow_one_chain(Nbm, Nmc, L, Lcl, mu=1.0):
     """
     N = Nbm*Nmc   # beads per chain
     xyz = np.zeros((N, 3))
-    xyz[0] = np.random.rand(3)*L
+    xyz[0] = np.random.rand(3) * L
     for i in range(1, N):
-        th = np.random.rand()*pi
-        phi = np.random.rand()*2*pi
+#        th = np.random.rand() * pi
+        th = acos(1 - 2 * np.random.rand())
+        phi = 2 * pi * np.random.rand()
         r = mu
-        new_bead_pos = [r*cos(th), r*sin(th)*cos(phi), r*sin(th)*sin(phi)]
-        xyz[i] = xyz[i-1] + new_bead_pos
+        new_pos = np.array([sin(th) * cos(phi), sin(th) * sin(phi), cos(th)])
+        xyz[i] = xyz[i-1] + r * new_pos
         xyz[i] = np.where(xyz[i] > L, L, xyz[i])   # on boundary coord = L/0
         xyz[i] = np.where(xyz[i] < 0.0, 0.0, xyz[i])
     xyz[:, 0] = xyz[:, 0]*(L-2*Lcl)/L + Lcl        # fit into proper volume
@@ -245,8 +249,8 @@ if __name__ == "__main__":
         sys.exit("Choose method 1 or 2.")
     gamma = data["gamma"] 
     r0 = data["equilibrium-dist"]
-    lmbda = data["water-uptake"]
     L = data["box-size"]
+    lmbda = data["water-uptake"]
     if lmbda < 3:
         sys.exit("Water uptake should be more than 3, aborting.")
 
@@ -259,9 +263,14 @@ if __name__ == "__main__":
     mono_beads = data["mono-beads"]
     Nbm = len(mono_beads)
     Nmc = data["mono-per-chain"]
-    Lcl, Lpt, Nsup, Npt = set_electrodes(data, L)
+    if data.get("electrodes"):
+        Lcl, Lpt, Nsup, Npt = set_electrodes(data, L)
+    else:
+        print("Electrodes off.")
+        Lcl, Lpt = 0.0, 0.0
+        Nsup, Npt = 0, 0
     Nelb = Nsup + Npt
-    N = int(rho_DPD * L**2*(L-2*Lcl))   # num. polymer beads, must be cubes
+    N = int(rho_DPD * L**2 * (L - 2 * Lcl))   # num. poly beads
     Nc, Nw = calc_nc_nw(N, Nmc, Nbm, lmbda)
     Nbc = Nbm*Nmc              
     print("Monomers per chain: %i, Beads per monomer: %i" % (Nmc, Nbm))
@@ -340,7 +349,7 @@ if __name__ == "__main__":
         print("Data file saved in", fname)
 
     if args["--xyz"]:
-        fname = args["--xyz"]
+        fname = "nafion.xyz"
         xyz = np.hstack((np.matrix(atom_ids_n).T, xyz))
         ll.save_xyzfile(fname, xyz)
         print("xyz file saved in", fname)

@@ -1,20 +1,24 @@
 #!/usr/bin/env python
 """Usage:
-    default_ptfe_input.py [--seed <s> --L <L> --lmbda <l> --gamma <g>]
-                          [--el <el> --width <w> --rpt <rpt>]
+    default_ptfe_input.py bulk [--seed <s> --L <L> --lmbda <l> --gamma <g>]
+                   [--method <m>]
+    default_ptfe_input.py slab [--width <w> --el <el> --rpt <rpt>]
+                   [--seed <s> --L <L> --lmbda <l> --gamma <g> --method <m>]
+                          
 
 Generate input.yaml file that will serve to generate
-a LAMMPS data file by being read by gen_ptfe.py script.
+a LAMMPS/DL_MESO input files by being read by gen_ptfe.py script.
 This script supersedes the default_ptfe_input*.sh scripts.
 
 Options:
-    --seed <s>          Random seed [default: 1234]
-    --L <L>             Box size [default: 40]
-    --lmbda <l>         Water uptake [default: 9]
-    --gamma <g>         DPD friction gamma [default: 4.5]
-    --el <el>           Electrode type: carbon, silica, quartz [default: carbon]
-    --width <w>         Electrode width in DPD units [default: 5.0]
-    --rpt <rpt>         Ratio of width of Pt segment on electrode [default: 0.0]
+    --seed <s>     Random seed [default: 1234]
+    --L <L>        Box size [default: 40]
+    --lmbda <l>    Water uptake [default: 9]
+    --gamma <g>    DPD friction [default: 4.5]
+    --el <el>      Electrode type: carbon, silica, quartz [default: carbon]
+    --width <w>    Nafion slab width in nm [default: 10]
+    --rpt <rpt>    Ratio of width of Pt segment on electrode [default: 0]
+    --method <m>   Use either 25 (1) or 6*25 (2) as repulsion [default: 2]
 
 pv278@cam.ac.uk, 16/06/16
 """
@@ -86,6 +90,7 @@ W E: 1.56
 
 
 args = docopt(__doc__)
+rc = 8.14e-10
 seed = int(args["--seed"])
 L = float(args["--L"])
 T = 1.0
@@ -98,19 +103,20 @@ r0 = 0.1
 elmat = args["--el"]
 w = float(args["--width"])
 rPt = float(args["--rpt"])
-method = 2
+method = int(args["--method"])
 
 if elmat not in ["carbon", "silica", "quartz"]:
-    print("ERROR. Choose from electrode support: carbon, silica, quartz.")
-    sys.exit()
+    sys.exit("ERROR. Choose from these electrodes: carbon, silica, quartz.")
 
-if w < 0.0 or w > L/2:
-    print("ERROR: Electrode width is at most one half of box size.")
-    sys.exit()
+#if w < 0.0 or w > L/2:
+#    sys.exit("ERROR: Electrode width is at most one half of box size.")
+
+L_nm = L * rc / 1e-9
+if w > L_nm:
+    sys.exit("Slab width can be at most the box size (%.2f nm)." % L_nm)
 
 if rPt < 0.0 or rPt > 1.0:
-    print("ERROR: Platinum ratio must be between 0 and 1.")
-    sys.exit()
+    sys.exit("Platinum ratio must be between 0 and 1.")
 
 s = """# ===== Bead types:
 # * A, B, C
@@ -132,7 +138,7 @@ s += "mono-per-chain:    %i\n" % Nmc
 s += "mono-beads:        %s\n" % mono_beads
 s += "water-uptake:      %i         # number of H2O/SO3H\n" % lmbda
 s += "gamma:             %.1f       # DPD drag coefficient\n" % gamma
-s += "topology:          (A 3, [B 1], [C 1])15\n\n"
+s += "topology:          (A 3, [B 1], [C 1])15 # OLD\n\n"
 
 s += "chi-params:\n"
 for k, v in yaml.load(chi[elmat]).items():
@@ -142,14 +148,14 @@ s += "\n"
 s += "bond-coeffs:\n    A A: %.1f\n\n" % k0
 s += "equilibrium-dist:  %.1f\n\n" % r0
 
-s += "electrodes:\n"
-s += "    material:      %s\n" % elmat
-s += "    width:         %.1f       # electrode width\n" % w 
-s += "    Pt-ratio:      %.1f       # ratio of Pt/C segment\n" % rPt
+if args["slab"]:
+    s += "electrodes:\n"
+    s += "    material:      %s\n" % elmat
+    s += "    width:         %.1f       # slab width in nm\n" % w 
+    s += "    Pt-ratio:      %.1f       # ratio of Pt/C on electrode\n" % rPt
 
 fname = "input.yaml"
 open(fname, "w").write(s)
 print("Parameter file saved in %s." % fname)
-
 
 
