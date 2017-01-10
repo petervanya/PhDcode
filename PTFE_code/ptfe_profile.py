@@ -15,7 +15,7 @@ Arguments:
     <pl>           Plane to profile on ("xy", "yz", "xz")
 
 Options:
-    --subst <s>    Substance: "water", "sulfonic", "backbone" [default: water]
+    --subst <s>    Substance: "water", "sulfonic", "backbone", "el" [default: water]
     --depth <d>    Relative depth at which to profile the plane [default: 0.5]
     --thick <h>    Thickness of the profile in DPD units [default: 1]
     --L <L>        Box size [default: 40]
@@ -69,6 +69,12 @@ def create_1d_profile(dumpfiles, axis, subst, bins):
             res += 6 * profile1 / float(Nfiles)
             res += 5 * profile2 / float(Nfiles)
             res += profile3 / float(Nfiles)
+    elif subst == "el":
+        for dumpfile in dumpfiles:
+            A = read_outfile(dumpfile)
+            beads = A[A[:, 0] == 5][:, 1:]
+            profile, bins = np.histogram(beads[:, axis], bins=bins)
+            res += profile / float(Nfiles)
     return res, bins
 
 
@@ -101,13 +107,13 @@ if __name__ == "__main__":
     L = float(args["--L"])
     axes = {"x": 0, "y": 1, "z": 2}
     planes = {"xy": (0, 1), "yz": (1, 2), "xz": (0, 2)}
-    subst_map = {"water": "W", "sulfonic": "S", "backbone": "B"}
+    subst_map = {"water": "W", "sulfonic": "S", "backbone": "B", "el": "E"}
     dumpfiles = glob.glob(args["<files>"])
     Nf = len(dumpfiles)
     nbins = int(args["--nbins"])
     subst = args["--subst"]
     if subst not in subst_map.keys():
-        sys.exit("Choose substance from 'water', 'sulfonic', 'backbone'.")
+        sys.exit("Allowed substances: 'water', 'sulfonic', 'backbone', 'el'.")
     if not dumpfiles:
         sys.exit("No files captured, aborting.")
 
