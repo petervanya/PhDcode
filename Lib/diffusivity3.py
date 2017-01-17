@@ -9,7 +9,7 @@ Averating through at least 50 frames recommended (navg).
 
 Options:
     --bt <bt>    Bead type [default: 1]
-    --nb <nb>    Number of beads to average over [default: 1]
+    --nb <nb>    Number of beads for averaging, or 'all' [default: 1]
     --si         Convert to SI units
     --mb <mb>    Rescale by number of molecules in a bead [default: 6]
     --cut <rc>   Cutoff to identify PBC crossings [default: 5.0]
@@ -18,6 +18,7 @@ pv278@cam.ac.uk, 15/11/16
 """
 import numpy as np
 from math import sqrt
+from scipy.optimize import curve_fit
 import time
 import os, sys, glob
 import matplotlib.pyplot as plt
@@ -71,9 +72,10 @@ def check_beadtypes(bt, frame):
     """Check if beadtype present in the xyz frame"""
     A = read_xyzfile(frame)
     bts = set(A[:, 0].astype(int))
+    Nbf = sum(A[:, 0] == bt)
     if bt not in bts:
         sys.exit("Bead type %i not found in frame." % bt)
-    return
+    return Nbf
 
 
 def parse_control():
@@ -94,20 +96,28 @@ def parse_control():
 if __name__ == "__main__":
     args = docopt(__doc__)
     frames = glob.glob(args["<frames>"])
+    if len(frames) == 0:
+        sys.exit("0 frames captured.")
     frames.sort()
     Nf = len(frames)
     bt = int(args["--bt"])
-    check_beadtypes(bt, frames[0])
     dt, freq, L = parse_control()
     tau = dt * freq
-    Nb = int(args["--nb"])
     cut = float(args["--cut"])
-    mols_bead = int(args["--mb"])
+    Mb = int(args["--mb"])    # molecules per bead
+    Nbf = check_beadtypes(bt, frames[0])
+    Nb = args["--nb"]
+    if Nb == "all":
+        Nb = Nbf
+    else:
+        Nb = int(Nb)
+    if Nb > Nbf:
+        sys.exit("Nb larger than number of beads in frame (%i)." % Nbf)
 
     print("===== Diffusivity =====")
     print("Frames: %i | dt: %.3f | steps/frame: %i" % (Nf, dt, freq))
     print("Bead type: %i | Number of beads: %i | Molecules/bead: %i" % \
-            (bt, Nb, mols_bead))
+            (bt, Nb, Mb))
     print("PBC cutoff: %.2f" % cut)
 
     # Reading frames
@@ -132,9 +142,13 @@ if __name__ == "__main__":
             fmt="%.6e", header=hdr)
 
     D = np.zeros(3)
+    err = np.zeros(3)
     for i in range(3):
-        D[i] = np.polyfit(t[N1:], Rsq[N1:, i], 1)[0] / 2.0 * mols_bead
+        Cc, Ce = np.polyfit(t[N1:], Rsq[N1:, i], 1, cov=True)
+        D[i] = Cc[0] / 2.0 * Mb
+        err[i] = np.sqrt(np.diag(Ce))[0] / 2.0 * Mb
     print("\n1d diffusivity  (x,  y,  z):  %.6f  %.6f  %.6f" % tuple(D))
+    print("1d fit error    (x,  y,  z):  %.6f  %.6f  %.6f" % tuple(err))
     print("1d <r^2> saved in %s." % outname)
     if args["--si"]:
         print("1d in SI:  %.6e  %.6e  %.6e" % tuple(D * r_DPD**2 / tau_DPD))
@@ -151,20 +165,27 @@ if __name__ == "__main__":
             fmt="%.6e", header=hdr)
 
     D = np.zeros(3)
+    err = np.zeros(3)
     for i in range(3):
-        D[i] = np.polyfit(t[N1:], Rsq_2d[N1:, i], 1)[0] / 4.0 * mols_bead
+        Cc, Ce = np.polyfit(t[N1:], Rsq_2d[N1:, i], 1, cov=True)
+        D[i] = Cc[0] / 4.0 * Mb
+        err[i] = np.sqrt(np.diag(Ce))[0] / 4.0 * Mb
     print("\n2d diffusivity (xy, yz, xz):  %.6f  %.6f  %.6f" % tuple(D))
+    print("2d fit error   (xy, yz, xz):  %.6f  %.6f  %.6f" % tuple(err))
     print("2d <r^2> saved in %s." % outname)
     if args["--si"]:
         print("2d in SI:  %.6e  %.6e  %.6e" % tuple(D * r_DPD**2 / tau_DPD))
 
     # 3D
-    R = np.sum(Rsq, 1)
+    Rsq_3d = np.sum(Rsq, 1)
     outname = "diffusivity_3d_b%i.out" % bt
-    np.savetxt(outname, np.vstack((t, R)).T, fmt="%.6e")
+    np.savetxt(outname, np.vstack((t, Rsq_3d)).T, fmt="%.6e")
 
-    D = np.polyfit(t[N1:], R[N1:], 1)[0] / 6.0 * mols_bead
+    Cc, Ce = np.polyfit(t[N1:], Rsq_3d[N1:], 1, cov=True)
+    D = Cc[0] / 6.0 * Mb
+    err = np.sqrt(np.diag(Ce))[0] / 6.0 * Mb
     print("\n3d diffusivity: %.6f" % D)
+    print("3d fit error  : %.6f" % err)
     print("3d <r^2> saved in %s." % outname)
     if args["--si"]:
         print("3d in SI:  %.6e" % (D * r_DPD**2 / tau_DPD))
