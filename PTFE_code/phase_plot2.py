@@ -9,7 +9,7 @@ Options:
 
 [AD HOC] Make a figure plot as in Dura presentation.
 
-10/04/16
+10/04/16, modified 25/12/16
 """
 import numpy as np
 import matplotlib.pyplot as plt
