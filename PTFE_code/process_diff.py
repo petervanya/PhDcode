@@ -23,12 +23,13 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.ticker import FormatStrFormatter
 import matplotlib
+import os
 import pandas as pd
 from pandas import DataFrame
 from docopt import docopt
 
 
-matplotlib.rcParams.update({'font.size': 16})
+matplotlib.rcParams.update({'font.size': 24})
 
 
 def collect_data(default_path, elects_d, widths, lmbdas):
@@ -68,25 +69,37 @@ def plot_el(df, el, D, widths, lmbdas, to_pdf):
     * lmbdas: range of lmbdas
     """
     df_cut = df[df.elect == el]
-    fig, ax = plt.subplots()    # plt.figure()
+    fig, ax = plt.subplots(figsize=(8, 6))    # plt.figure()
 #    plt.tight_layout()
-    plt.gcf().subplots_adjust(left=0.18)
-    ax.yaxis.set_major_formatter(FormatStrFormatter('%.1e'))
+#    plt.gcf().subplots_adjust(left=0.1)
+#    ax.yaxis.set_major_formatter(FormatStrFormatter('%.1e'))
+    ymax = 0.0
+
     for l in lmbdas:
-        sel = df_cut[["d", D]][df_cut.lmbda == l]
-        sel = np.array(sel)
+        sel = np.array(df_cut[["d", D]][df_cut.lmbda == l])
         lbl = "$\lambda = %i$" % l
-        plt.plot(sel[:, 0], sel[:, 1], "+-", lw=2, ms=10, mew=2, label=lbl)
-        plt.xticks(widths)
-        plt.xlim([widths[0]-1, widths[-1]+1])
-        plt.xlabel("Electrode width (nm)")
-        ylbl = "Normal" if len(D) == 2 else "Parralel"
-        plt.ylabel("$D_{\mathrm{%s}}$" % ylbl)
-        plt.legend(loc="best")
-        plt.title(el)
+        plt.plot(sel[:, 0], sel[:, 1] * 1e9, "+-", lw=4, ms=15, mew=4, label=lbl)
+        ymax_temp = (max(sel[:, 1]*1e9) // 10 + 1) * 10  # round to 10s
+        if ymax_temp > ymax: ymax = ymax_temp
+        plt.ylim([0.0, ymax])
+
+    plt.xlim([widths[0]-1, widths[-1]+1])
+    plt.xticks(widths)
+    plt.yticks(np.arange(0.0, ymax+1, 5))
+    plt.xlabel("Thin film width (nm)")
+    ylbl = "Normal" if len(D) == 2 else "Parralel"
+    plt.ylabel("$D_{\mathrm{%s}} \; (10^{-9} \; \mathrm{m^2/s}) $" % ylbl)
+
+    plt.legend(loc="best", fontsize=22)
+    if el == "Carbon" and D == "Dx":
+        plt.legend(loc=2, fontsize=22)
+    if el == "Carbon" and D == "Dyz":
+        plt.legend(loc=(0.5, 0.5), fontsize=22)
+
+    plt.title(el)
     fmt = ".pdf" if to_pdf else ".png"
     plotname = default_path + D + "_" + el.lower() + fmt
-    plt.savefig(plotname)
+    plt.savefig(plotname, bbox_inches='tight')
 
 
 def plot_lmbda(df, lmbda, D, widths, elects, to_pdf):
@@ -99,26 +112,31 @@ def plot_lmbda(df, lmbda, D, widths, elects, to_pdf):
     """
     df_cut = df[df.lmbda == lmbda]
     fig, ax = plt.subplots()    # plt.figure()
-    ax.yaxis.set_major_formatter(FormatStrFormatter('%.1e'))
+    ymax = 0.0
+
     for el in elects:
-        sel = df_cut[["d", D]][df_cut.elect == el]
-        sel = np.array(sel)
-        plt.plot(sel[:, 0], sel[:, 1], "+-", lw=2, ms=10, mew=2, label=el)
-        plt.xticks(widths)
-        plt.xlim([widths[0]-1, widths[-1]+1])
-        plt.xlabel("Electrode width (nm)")
-        ylbl = "Normal" if len(D) == 2 else "Parralel"
-        plt.ylabel("$D_{\mathrm{%s}}$" % ylbl)
-        plt.legend(loc="best")
-        plt.title("$\lambda = %i$" % lmbda)
+        sel = np.array(df_cut[["d", D]][df_cut.elect == el])
+        plt.plot(sel[:, 0], sel[:, 1] * 1e9, "+-", lw=4, ms=15, mew=4, label=el)
+        ymax_temp = (max(sel[:, 1]*1e9) // 10 + 1) * 10  # round to 10s
+        if ymax_temp > ymax: ymax = ymax_temp
+        plt.ylim([0.0, ymax])
+   
+    plt.xlim([widths[0]-1, widths[-1]+1])
+    plt.xticks(widths)
+    plt.yticks(np.arange(0.0, ymax+1, 5))
+    plt.xlabel("Thin film width (nm)")
+    ylbl = "Normal" if len(D) == 2 else "Parralel"
+    plt.ylabel("$D_{\mathrm{%s}} \; (10^{-9} \; \mathrm{m^2/s}) $" % ylbl)
+    plt.legend(loc="best", fontsize=22)
+    plt.title("$\lambda = %i$" % lmbda)
     fmt = ".pdf" if to_pdf else ".png"
     plotname = default_path + D + "_l" + str(lmbda) + fmt
-    plt.savefig(plotname)
+    plt.savefig(plotname, bbox_inches='tight')
 
 
 if __name__ == "__main__":
     args = docopt(__doc__)
-    default_path = "/home/pv278/Res/PTFEsim/Slab_DLMS/DataCommon/"
+    default_path = "." # where DataCommon/ is
 
     lmbdas = [6, 9, 12]
     widths = [5, 10, 15]
