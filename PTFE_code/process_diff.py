@@ -78,7 +78,15 @@ def plot_el(df, el, D, widths, lmbdas, to_pdf):
     for l in lmbdas:
         sel = np.array(df_cut[["d", D]][df_cut.lmbda == l])
         lbl = "$\lambda = %i$" % l
-        plt.plot(sel[:, 0], sel[:, 1] * 1e9, "+-", lw=4, ms=15, mew=4, label=lbl)
+
+        if el == "Carbon":
+            eb = [1.0, 0.5, 0.25]   # in 1e-9 m^2/s
+            plt.errorbar(sel[:, 0], sel[:, 1] * 1e9, yerr=eb, \
+                    fmt="D-", lw=4, ms=10, mew=0, label=lbl)
+        else:
+            plt.plot(sel[:, 0], sel[:, 1] * 1e9, \
+                    "D-", lw=4, ms=10, mew=0, label=lbl)
+
         ymax_temp = (max(sel[:, 1]*1e9) // 10 + 1) * 10  # round to 10s
         if ymax_temp > ymax: ymax = ymax_temp
         plt.ylim([0.0, ymax])
@@ -116,7 +124,13 @@ def plot_lmbda(df, lmbda, D, widths, elects, to_pdf):
 
     for el in elects:
         sel = np.array(df_cut[["d", D]][df_cut.elect == el])
-        plt.plot(sel[:, 0], sel[:, 1] * 1e9, "+-", lw=4, ms=15, mew=4, label=el)
+        if el == "Carbon":
+            eb = [1.0, 0.5, 0.25]   # in 1e-9 m^2/s
+            plt.errorbar(sel[:, 0], sel[:, 1] * 1e9, yerr=eb, \
+                    fmt="D-", lw=4, ms=10, mew=0, label=el)
+        else:
+            plt.plot(sel[:, 0], sel[:, 1] * 1e9, \
+                    "D-", lw=4, ms=10, mew=0, label=el)
         ymax_temp = (max(sel[:, 1]*1e9) // 10 + 1) * 10  # round to 10s
         if ymax_temp > ymax: ymax = ymax_temp
         plt.ylim([0.0, ymax])
@@ -136,7 +150,7 @@ def plot_lmbda(df, lmbda, D, widths, elects, to_pdf):
 
 if __name__ == "__main__":
     args = docopt(__doc__)
-    default_path = "." # where DataCommon/ is
+    default_path = "./" # where DataCommon/ is
 
     lmbdas = [6, 9, 12]
     widths = [5, 10, 15]
