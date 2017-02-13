@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """Usage:
-    parse_config.py <input> [--shift --shift2 <a> --nafion]
+    config2xyz.py <input> [--shift --shift2 <a> --nafion]
 
 Transform DL_MESO CONFIG file into xyz file.
 

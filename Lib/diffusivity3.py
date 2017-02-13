@@ -126,7 +126,7 @@ if __name__ == "__main__":
         xyzs[:, :, i] = read_from_top(frames[i], Nb, btype=bt)
     Rsq = np.zeros((Nf, 3))
     t = np.arange(0, Nf * tau, tau)
-    N1 = Nf // 6  # start fitting from this point
+    N1 = Nf // 3  # start fitting from this point
 
     # Calculating distances
     ti = time.time()
