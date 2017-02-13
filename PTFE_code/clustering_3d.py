@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""Usage: clusterng_3d.py <file> <rc> [--save]
+"""Usage: clustering_3d.py <file> <rc> [--save]
 
 Read water heat map, select cutoff turn into black clusters.
 Use flood fill algorithm to find size and number of these clusters.
@@ -71,7 +71,10 @@ if __name__ == "__main__":
     
     print("====== Clustering water in 3d =====")
     ti = time.time()
-    A = np.loadtxt(fname)
+    try:
+        A = np.loadtxt(fname)
+    except FileNotFoundError:
+        sys.exit("File not found: %s." % fname)
     tf = time.time()
     print("Reading file: %s | Time: %.2f s" % (fname, tf - ti))
     N = np.round(len(A)**(1/3)).astype(int)

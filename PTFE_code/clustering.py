@@ -1,6 +1,5 @@
 #!/usr/bin/env python
-"""Usage: 
-    clusterng.py <file> <rc> [--save]
+"""Usage: clustering.py <file> <rc> [--save]
 
 Read water heat map, select cutoff turn into black clusters.
 Use flood fill algorithm to find size and number of these clusters.
@@ -52,8 +51,10 @@ if __name__ == "__main__":
     sys.setrecursionlimit(int(1e6))
     fname = args["<file>"]
     rc = float(args["<rc>"])
-
-    A = np.loadtxt(fname)
+    try:
+        A = np.loadtxt(fname)
+    except FileNotFoundError:
+        sys.exit("File not found: %s." % fname)
     N = len(A)
     max_rho, min_rho = np.max(A), np.min(A)
     dx = [i for i in fname.split("_") if "dx" in i][0].lstrip("dx")
