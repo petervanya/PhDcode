@@ -24,7 +24,7 @@ import dlms_lib as dlms
 NA = 6.022e23
 AMU = 1.66e-27
 rho_DPD = 3.0
-a_DPD = 25.0
+#a_DPD = 25.0
 rc = 8.14e-10               # DPD distance unit
 k0 = 4.0
 rho_el = {"carbon": 2000.0, "quartz": 2648.0, "silica": 2196.0}
@@ -49,9 +49,7 @@ def set_electrodes(data, L):
         *-----------*
          Lcl
     """
-#    Lcl = data["electrodes"]["width"]  # electrode layer width
     Lslab = data["electrodes"]["width"]
-    print(Lslab, Lslab * 1e-9 / rc)
     Lcl = (L - Lslab * 1e-9 / rc) / 2
     if Lcl > L/2:
         sys.exit("Electrode layer thicker than membrane.")
@@ -213,7 +211,7 @@ def gen_bonds_one_chain(Nmc, mono_beads, start=0):
     return bond_mat[1:]    # reject 1st dummy bond
 
 
-def gen_inter_coeffs(atoms_yaml, bead_types, gamma=4.5, rc=1.0):
+def gen_inter_coeffs(atoms_yaml, bead_types, a_DPD, gamma=4.5, rc=1.0):
     """
     Generate atomic params a_ij for all possible combinations 
     given number of atom types. Read custom bonds from input.yaml file
@@ -245,8 +243,10 @@ if __name__ == "__main__":
         a_DPD = 25.0
     elif data["method"] == 2:
         a_DPD = 158.0
+    elif data["method"] == 3:
+        a_DPD = 6**(2/3) * 25.0
     else:
-        sys.exit("Choose method 1 or 2.")
+        sys.exit("Choose method 1, 2 or 3.")
     gamma = data["gamma"] 
     r0 = data["equilibrium-dist"]
     L = data["box-size"]
@@ -292,7 +292,7 @@ if __name__ == "__main__":
     for i, bt in enumerate(bead_types): bt2num[bt] = i+1
     atom_ids_n = [bt2num[bt] for bt in atom_ids_l]
 
-    a_ij = gen_inter_coeffs(data["chi-params"], bead_types, gamma, rc=1.0)
+    a_ij = gen_inter_coeffs(data["chi-params"], bead_types, a_DPD, gamma, rc=1.0)
     masses = dict( (i, 1.0) for i in range(1, Nbt+1) )
 
     # ==== printing

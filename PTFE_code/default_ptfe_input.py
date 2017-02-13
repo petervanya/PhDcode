@@ -100,7 +100,7 @@ lmbda = int(args["--lmbda"])
 gamma = float(args["--gamma"])
 k0 = 4.0
 r0 = 0.1
-elmat = args["--el"]
+elmat = args["--el"].lower()
 w = float(args["--width"])
 rPt = float(args["--rpt"])
 method = int(args["--method"])
@@ -127,6 +127,7 @@ s += """
 # ===== Method:
 # * 1: a_DPD = 25 = (16 - 1) / 0.2 / 3
 # * 2: a_DPD = 158 = (6*16 - 1) / 0.2 / 3
+# * 3: a_DPD sim N^(2/3), from Fuchslin, JCP, 2009
 \n"""
 
 s += "seed:              %i\n" % seed
