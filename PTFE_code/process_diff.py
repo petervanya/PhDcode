@@ -2,7 +2,7 @@
 """Usage: 
     process_diff.py parse
     process_diff.py plot by_elect <dfpath> [--pdf]
-    process_diff.py plot by_lambda <dfpath> [--pdf]
+    process_diff.py plot by_lmbda <dfpath> [--pdf]
 
 [AD HOC] Process diffusivities. Collect all the data about 
 diffusivities of water in Nafion into one table 
@@ -15,17 +15,15 @@ Arguments:
     <dfpath>    Path of the dataframe with diffusivities
 
 Options:
-    --pdf       Export in pdf, does not work on Cottrell
+    --pdf       Export in pdf
 
 pv278@cam.ac.uk, 17/11/16
 """
 import numpy as np
+from pandas import DataFrame, read_csv
 import matplotlib.pyplot as plt
 from matplotlib.ticker import FormatStrFormatter
 import matplotlib
-import os
-import pandas as pd
-from pandas import DataFrame
 from docopt import docopt
 
 
@@ -165,7 +163,7 @@ if __name__ == "__main__":
 
     if args["plot"]:
         dfpath = args["<dfpath>"]
-        df = pd.read_csv(dfpath)
+        df = read_csv(dfpath)
         to_pdf = args["--pdf"]
         if to_pdf:           # use latex fonts
             plt.rc('text', usetex=True)
