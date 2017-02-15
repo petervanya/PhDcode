@@ -80,7 +80,6 @@ def plot_el(df, el, D, widths, lmbdas, to_pdf, is_sparse):
         sel = np.array(df_cut[["lmbda", D]][df_cut.d == d])
 
         if el == "Carbon":
-#            eb = [1.0, 0.5, 0.25, 0.1]   # in 1e-9 m^2/s
             Nl = len(lmbdas)
             eb = [1.0/i for i in range(1, Nl+1)]
             plt.errorbar(sel[:, 0], sel[:, 1] * 1e9, yerr=eb, \
@@ -134,7 +133,7 @@ if __name__ == "__main__":
     if args["plot"]:
         if args["--sparse"]:
             lmbdas = [6, 9, 12, 16]
-            widths = [5, 10, 15, 20]
+            widths = [5, 10, 15]
         else:
             lmbdas = list(range(4, 25, 2))
             widths = [5, 10, 15, 20]
