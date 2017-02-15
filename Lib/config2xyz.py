@@ -60,22 +60,29 @@ if __name__ == "__main__":
         for i, bt in enumerate("ABCWEP"):
             names_dict[bt] = i+1
     else:
-        for i in enumerate(set(names)):   # converting bead types to numbers
+        for i in enumerate(set(names)):   # bead types to numbers
             names_dict[i[1]] = i[0]+1
     names = [names_dict[i] for i in names]
 
     xyz = np.array([[float(j) for j in conf_str[i].split()] for i in mask+1])
 
     if args["--shift"]:
-        Ls = np.round((np.max(xyz) - np.min(xyz)), 1)
-        xyz += np.array([Ls, Ls, Ls])
-        xyz = xyz % Ls
-        print("Shifted box by Ls = %i." % Ls)
+        L = np.array([np.round((max(xyz[:, i]) - min(xyz[:, i])), 1) \
+                for i in range(3)])
+        xyz += L
+        xyz = xyz % L
+        print("Shifted box by", L)
     if args["--shift2"]:
-        Ls = float(args["--shift2"])
-        xyz += np.array([Ls, Ls, Ls])
-        xyz = xyz % Ls
-        print("Shifted box by Ls = %i." % Ls)
+        s = args["--shift2"].split()
+        if len(s) == 1:
+            L = float(s[0]) * np.ones(3)
+        elif len(s) == 3:
+            L = np.array(s).astype(float)
+        else:
+            sys.exit("<L> should have size 1 or 3.")
+        xyz += L
+        xyz = xyz % L
+        print("Shifted box by", L)
 
     fname = infile.strip(".out") + ".xyz"
     save_xyzfile(fname, names, xyz)
