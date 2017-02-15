@@ -1,32 +1,35 @@
 #!usr/bin/env python
 """
-Collection of functions to produce strings in the DL_MESO formatting
-style.
-
+Collection of functions to produce strings in the DL_MESO 
+formatting style.
 
 pv278@cam.ac.uk, 17/06/16
 """
 import numpy as np
 
+# ===== manipulate output
+def read_xyzfile(outfile):
+    """Read one xyz outfile into a numpy matrix"""
+    if not os.path.isfile(outfile):
+         sys.exit("File %s not found." % outfile)
+    A = open(outfile, "r").readlines()[2:]
+    A = [line.split() for line in A]
+    A = np.array(A, order="F").astype(float)
+    return A
+
+
+def save_xyzfile(fname, mat):
+    """Take xyz matrix [ids, x, y, z] and save into fname"""
+    N = len(mat)
+    with open(fname, "w") as f:
+        f.write(str(N) + "\nbla\n")
+        for i in range(N):
+            f.write("%i\t%f\t%f\t%f\n" % \
+                    (mat[i, 0], mat[i, 1], mat[i, 2], mat[i, 3]))
+
 
 # ===== FIELD file
-def species2str(bead_types, bead_pop):
-    """
-    * bead_types: e.g. "ABCWEP"
-    * bead_pop: dict of bead population, e.g. {"A": 500, "B": 500}
-    Ordering: bead type, mass, charge, number, freeze or not
-    """
-    s = "SPECIES %i\n" % len(bead_types)
-    for b in bead_types:
-        s += b + "    1.0 0.0 " + str(bead_pop[b])
-        if b == "E" or b == "P":   # freeze platinum or electrode beads
-            s += " 1\n"
-        else:
-            s += " 0\n"
-    return s + "\n"
-
-
-def species2str2(beads):
+def species2str(beads):
     """
     beads: dict of bead populations, e.g. {"A": 500, "B": 500}
     Ordering on line: bead type, mass, charge, number, freeze (or not)
@@ -102,13 +105,13 @@ def mol2str(molname, Nmols, bead_list, bond_mat, bond_type="harm", \
 
 
 # ===== CONFIG file
-def save_config(fname, names, xyz, imcon=0):
+def save_config(fname, names, xyz, box, imcon=0):
     """Save positions into file
-    * imcom: include box coords (0 or 1)"""
+    * box: matrix of form diag(Lx, Ly, Lz)
+    * imcon: include box coords (0 or 1)"""
     N = len(xyz)
     conf_str = "bla\n" + "0\t%i\n" % imcon
     if imcon == 1:
-        box = L*np.eye(3)
         for i in range(len(box)):
             conf_str += "%f\t%f\t%f\n" % (box[i, 0], box[i, 1], box[i, 2])
 

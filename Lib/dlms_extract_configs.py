@@ -4,7 +4,7 @@
 
 Extact config frames from DL_MESO HISTORY files, 
 convert them to xyz files and place into Dump/ directory.
-BEFORE: place DL_MESO script history_config.exe INTO Lib/Extern directory.
+Need to have CONTROL file in the same directory.
 
 Arguments:
     <nf>             Number of config frames requested [default: 10]
@@ -14,7 +14,7 @@ Options:
     --nafion         Bead ordering "ABCWEP"
     --histpath <hp>  Path of the DL_MESO 'history_config.exe' file
 
-21/06/16
+pv278@cam.ac.uk, 21/06/16
 """
 import os, sys
 import subprocess
@@ -37,38 +37,30 @@ def get_timesteps():
     return (Nsteps - Nstart) // Nevery + 1
 
 
+def get_cores():
+    if not (os.path.isfile("HISTORY") or os.path.isfile("HISTORY000000")):
+        sys.exit("No HISTORY files in the current directory.")
+    pipe = Popen("ls -l HISTORY* | wc -l", stdout=PIPE, shell=True)
+    return int(pipe.communicate()[0])
+
+
 args = docopt(__doc__)
 Nf = int(args["<nf>"])
 levcfg = int(args["--levcfg"])
 
-# get number of cores
-if not (os.path.isfile("HISTORY") or os.path.isfile("HISTORY000001")):
-    sys.exit("No HISTORY* files in the current directory.")
-pipe = Popen("ls -l HISTORY* | wc -l", stdout=PIPE, shell=True)
-Nc = int(pipe.communicate()[0])
-
 # number of frames
 Nhf = get_timesteps()
+Nc = get_cores()
 print("Cores: %i | Total number of frames: %i | Requested frames: %i" % \
       (Nc, Nhf, Nf))
             
 if not os.path.exists("Dump"):
     os.makedirs("Dump")
 
-# call history_config.exe Nf times
-# reproduce this:
-# for i in {292..301}
-#     do history_config.exe 20 0 $i; 
-#     config2xyz.py CONFIG.out --shift --nafion
-#     mv CONFIG.xyz Dump/dump_${i}.xyz
-# done
+hist_path = "~/sw/bin" if not args["--histpath"] else args["--histpath"]
 
-if not args["--histpath"]:
-    hist_path = "~/Res/PhDcode/Lib/Extern/"
-else:
-    hist_path = args["--histpath"]
-hist_script = os.path.expanduser("~/Res/PhDcode/Lib/Extern/history_config.exe")
-transf_script = os.path.expanduser("~/Res/PhDcode/Lib/config2xyz.py")
+hist_script = os.path.expanduser(hist_path + "/history_config.exe")
+transf_script = os.path.dirname(__file__) + "/config2xyz.py"
 nafion_flag = "--nafion" if args["--nafion"] else ""
 if not os.path.isfile(hist_script):
     sys.exit("Cannot find history_config.exe.")
