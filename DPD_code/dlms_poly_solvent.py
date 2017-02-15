@@ -14,13 +14,13 @@ Options:
     --aii <aii>    Default bead repulsion [default: 25]
     --da <da>      Excess repulsion [default: 1]
 
-pv278@cam.ac.uk, 18/11/16
+pv278@cam.ac.uk, 18/11/16, modified 15/02/16
 """
 import numpy as np
 from numpy import pi, cos, sin
 import sys
 from docopt import docopt
-from dlms_lib import save_config, inter2str, species2str2, mol2str
+from dlms_lib import save_config, inter2str, species2str, mol2str
 
 
 def grow_polymer(L, f, r, Nc, mu=0.8):
@@ -50,46 +50,10 @@ def grow_one_chain(L, r, Nc, mu):
     return xyz
 
 
-def gen_bonds(n, Nc):
-    """Return (n*Nc, 2) matrix, columns: [atom1, atom2]
-    Input:
-    * n: polymerisation
-    * Nc: number of chains"""
-    bond_mat = np.zeros(((n-1)*Nc, 2), dtype=int)
-    for i in range(Nc):
-        one_chain = np.hstack(( np.matrix( np.arange(n*i+1, n*(i+1)) ).T,\
-                                np.matrix( np.arange(n*i+2, n*(i+1)+1) ).T ))
-        bond_mat[i*(n-1) : (i+1)*(n-1)] = one_chain
-    return bond_mat
-
-
-def gen_bonds2(r):
+def gen_bonds(r):
     """Return (r, 2) matrix, columns: [atom1, atom2]
-    Input:
-    * r: polymerisation
-    * Nc: number of chains"""
+    * r: polymerisation"""
     return np.vstack((np.arange(1, r), np.arange(2, r+1))).T
-
-
-def save_config(fname, names, xyz):
-    """Save positions into file"""
-    N = len(xyz)
-
-    imcon = 0   # include box coordinates
-    conf_str = "bla\n" + "0\t%i\n" % imcon
-    if imcon == 1:
-        box_mat = L*np.eye(3)
-        for i in range(len(box_mat)):
-            conf_str += "%f\t%f\t%f\n" % \
-                    (box_mat[i, 0], box_mat[i, 1], box_mat[i, 2])
-
-    for i in range(N):
-        conf_str += "%s        %i\n" % (names[i], i+1)
-        conf_str += "    %.10f    %.10f    %.10f\n" % \
-                (xyz[i, 0], xyz[i, 1], xyz[i, 2])
-
-    open(fname, "w").write(conf_str)
-    print("Initial configuration written in %s" % fname)
 
 
 def save_bonds(fname, bond_mat, k0=4.0, r0=0.1, bond_type="harm"):
@@ -108,45 +72,55 @@ if __name__ == "__main__":
     args = docopt(__doc__)
     r = int(args["--r"])   # polymerisation
     f = float(args["--f"])
-    L = float(args["--L"])
     rho = float(args["--rho"])
     aii = float(args["--aii"])
     da = float(args["--da"])
+    s = args["--L"].split()
+    if len(s) == 1:
+        L = float(s[0]) * np.ones(3)
+    elif len(s) == 3:
+        L = np.array(s).astype(float)
+    else:
+        sys.exit("<L> should have size 1 or 3.")
     if f < 0.0 or f > 1.0:
         sys.exit("f should be between 0 and 1.")
 
-    N = int(rho * L**3)
+    N = int(rho * np.prod(L)) // 10 * 10     # round to 10
+    box = np.diag(L)
     Nc = int(N * f // r)
     Ns = N - Nc
-    k0, r0 = 4.0, 0.1      # spring constants
+
+    print("===== DPD polymer-solvent mixture =====")
+    print("rho: %.1f | Box: %s" % (rho, str(L)))
     print("Fraction of P: %.2f | Num. chains: %i | Polymerisation: %i" % \
             (f, Nc, r))
     
-    # ===== positions
-    xyzP = grow_polymer(L, f, r, Nc)
-    xyzS = np.random.rand(Ns, 3) * L
-    xyz = np.vstack((xyzP, xyzS))
-    names = ["C"] * r * Nc + ["S"] * Ns
-    save_config("CONFIG", names, xyz)
-
-    # ===== generate FIELD file with bead species and interactions
     rc, gamma = 1.0, 4.5
     a_ij = {}
     a_ij["C C"] = [aii, rc, gamma]
     a_ij["S S"] = [aii, rc, gamma]
     a_ij["C S"] = [aii + da, rc, gamma]
 
-    bond_mat = gen_bonds2(r)
+    # ===== positions
+    xyzP = grow_polymer(L, f, r, Nc)
+    xyzS = np.random.rand(Ns, 3) * L
+    xyz = np.vstack((xyzP, xyzS))
+    names = ["C"] * r * Nc + ["S"] * Ns
+    save_config("CONFIG", names, xyz, box)
+
+    # ===== bonds
+    k0, r0 = 4.0, 0.1      # spring constants
+    bond_mat = gen_bonds(r)
     bead_list = ["C"] * r
     mol_str = mol2str("poly", Nc, bead_list, bond_mat, \
-                                  bond_type="harm", k0=k0, r0=r0)
+            bond_type="harm", k0=k0, r0=r0)
 
-    field_string = "bla\n\n" +\
-                   species2str2({"C": 0, "S": Ns}) +\
-                   inter2str(a_ij) +\
-                   "MOLECULES 1\n" + \
-                   mol_str + "\n" + \
-                   "close\n"
+    field_string = "bla\n\n" + \
+            species2str({"C": 0, "S": Ns}) + \
+            inter2str(a_ij) + \
+            "MOLECULES 1\n" + \
+            mol_str + "\n" + \
+            "close\n"
     open("FIELD", "w").write(field_string)
     print("FIELD file saved.")
 
