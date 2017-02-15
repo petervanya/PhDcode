@@ -28,14 +28,24 @@ if __name__ == "__main__":
     args = docopt(__doc__)
     np.random.seed(1234)
     f = float(args["--f"])
-    L = float(args["--L"])
+    s = args["--L"].split()
+    if len(s) == 1:
+        L = float(s[0]) * np.ones(3)
+    elif len(s) == 3:
+        L = np.array(s).astype(float)
+    else:
+        sys.exit("<L> should have size 1 or 3.")
     rho = float(args["--rho"])
     aii = float(args["--aii"])
     da = float(args["--da"])
-    N = int(rho * L**3) // 10 * 10     # round to 10
+    N = int(rho * np.prod(L)) // 10 * 10     # round to 10
     if f < 0.0 or f > 1.0:
         sys.exit("Fraction f of A beads must be between 0 and 1.")
-    print("N: %i | L: %.1f | rho: %.1f | fraction: %.2f" % (N, L, rho, f))
+
+    print("===== DPD binary mixture =====")
+    print("N: %i | rho: %.1f | fraction: %.2f" % (N, rho, f))
+    print("Box:", L)
+#    print("L: [%.2f, %.2f, %.2f]" % tuple(L))
 
     NA = int(f * N)
     NB = N - NA
@@ -61,7 +71,6 @@ if __name__ == "__main__":
     fname = "CONFIG"
     open(fname, "w").write(conf_str)
     print("Initial configuration written in %s" % fname)
-#    save_config("CONFIG", names, xyz)   # use function form dlms_lib.py
 
     # ===== generate FIELD file with bead species and interactions
     rc, gamma = 1.0, 4.5
