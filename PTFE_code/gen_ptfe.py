@@ -297,7 +297,7 @@ if __name__ == "__main__":
 
     # ==== printing
     if args["dlms"]:
-        dlms.save_config("CONFIG", atom_ids_l, xyz)
+        dlms.save_config("CONFIG", atom_ids_l, xyz, L*np.eye(3))
  
         bond_mat = gen_bonds_one_chain(Nmc, mono_beads, start=0)
         print("FIELD: %i bonds in a chain" % len(bond_mat))
@@ -305,7 +305,7 @@ if __name__ == "__main__":
         nafion_mol_str = dlms.mol2str("nafion", Nc, bead_list, bond_mat, \
                                       bond_type="harm", k0=k0, r0=r0)
         field_string = "bla\n\n" +\
-                       dlms.species2str(bead_types, bead_pop) +\
+                       dlms.species2str(bead_pop) +\
                        dlms.inter2str(a_ij) + \
                        "MOLECULES 1\n" + \
                        nafion_mol_str + "\n" + \

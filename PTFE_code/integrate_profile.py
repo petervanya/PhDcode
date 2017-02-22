@@ -25,7 +25,10 @@ if __name__ == "__main__":
     L = float(args["--L"])
     d_nm = float(args["<d>"])
     d = d_nm * 1e-9 / rc
-    A = np.loadtxt(args["<profile>"])
+    try:
+        A = np.loadtxt(args["<profile>"])
+    except FileNotFoundError:
+        sys.exit("No file found: %s." % args["<profile>"])
     r, f = A[:, 0], A[:, 1]
     if d < 0.0 or d > L:
         sys.exit("Slab width larger than box size.")
@@ -41,20 +44,22 @@ if __name__ == "__main__":
     fe2 = f[r > (L+d)/2]
     fm = f[(r >= (L-d)/2) & (r <= (L+d)/2)]
 
-    water_mat = simps(fm, dx=dr)
+    water_film = simps(fm, dx=dr)
     water_elec = simps(fe1, dx=dr) + simps(fe2, dx=dr)
     water_tot = simps(f, dx=dr)
 
     print("Total water: %.2f" % water_tot)
-    print("Electrodes: %.2f | Matrix: %.2f | mat / el: %.2f" % \
-            (water_elec, water_mat, water_mat / water_elec))
+    print("Electrodes: %.2f | Film: %.2f | mat / el: %.2f" % \
+            (water_elec, water_film, water_film / water_elec))
+    R = water_film / (water_film + water_elec)
+    print("Ratio of water in the film: %.2f" % R)
     
-#    water_mat = np.sum(fm) * dr
+#    water_film = np.sum(fm) * dr
 #    water_elec = (np.sum(fe1) + np.sum(fe2)) * dr
 #    water_tot = np.sum(f) * dr
 #
 #    print("Naive quadrature | Total water: %.2f" % water_tot)
 #    print("Electrodes: %.2f | Matrix: %.2f | mat / el: %.2f" % \
-#            (water_elec, water_mat, water_mat / water_elec))
+#            (water_elec, water_film, water_film / water_elec))
 
 

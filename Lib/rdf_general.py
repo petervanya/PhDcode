@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """Usage:
-    rdf_general.py <files> [--cutoff <rc> --L <L> --types <n> --bins <nbins>] 
+    rdf_general.py <files> --bt <bt> [--cutoff <rc> --L <L> --bins <nbins>] 
 
 Read xyz files and compute radial distribution function for a given atom type.
 Correct implementation of PBCs.
@@ -11,9 +11,9 @@ Two options:
 
 Arguments:
     <files>             Regex match xyz files
+    --bt <bt>           Atom name in number
 
 Options:
-    --types <n>         Atom name in number [default: 1]
     --cutoff <rc>       Consider pairs up to <rc> (units of xyz files)
     --bins <nbins>      Number of bins [default: 500]
     --L <L>             Box size (units of xyz files)
@@ -22,7 +22,7 @@ pv278@cam.ac.uk, 28/06/16
 """
 import numpy as np
 from numpy import pi
-import glob, sys
+import glob, sys, time
 from docopt import docopt
 from Fcore.f_rdf import f_rdf      # Fortran module
 import lmp_lib as ll
@@ -142,7 +142,7 @@ if __name__ == "__main__":
     bins = np.linspace(0, L/2, Nbins+1)
     r = bins[:-1] + np.diff(bins)/2.0
     
-    atom_types = [int(i) for i in args["--types"].split()]
+    atom_types = [int(i) for i in args["--bt"].split()]
     if len(atom_types) > 2:
         print("Only two atom types allowed for rdf calculation.")
         sys.exit()
@@ -159,12 +159,15 @@ if __name__ == "__main__":
     print("Atoms: %s | Bins: %i | Box: %.1f | rc %.2f | xyz files: %i" % \
          (repr(atom_types), Nbins, L, rc, Nd))
 
+    ti = time.time()
     if len(atom_types) == 1:
         vals = rdf_1type(dumpfiles, sp)
         fname = "rdf_%i.out" % atom_types[0]
     elif len(atom_types) == 2:
         vals = rdf_2types(dumpfiles, sp)
         fname = "rdf_%i_%i.out" % tuple(atom_types)
+    tf = time.time()
+    print("Time: %.2f s." % (tf - ti))
 
     np.savetxt(fname, np.vstack((r, vals)).T, fmt="%.4f")
     print("rdf saved in", fname)

@@ -2,6 +2,7 @@
 """Usage:
     dlms_control.py [--L <L> --dt <dt> --steps <n> --startstep <st>]
                     [--thermo <th> --halo <h> --eq <Neq>]
+                    [--mdpd <rd>]
 
 Generate DL_MESO control file.
 
@@ -13,6 +14,7 @@ Options:
     --eq <Neq>         Equilibration steps [default: 0]
     --thermo <th>      Print every [default: 100]
     --halo <h>         Boundary halo, like neighbor [default: 2.5]
+    --mdpd <rd>        Manybody cutoff
 
 pv278@cam.ac.uk, 06/06/16
 """
@@ -41,6 +43,8 @@ s = "pokus\n\n"
 s += "volume %.1f %.1f %.1f\n" % (L[0], L[1], L[2])
 s += "temperature 1.0\n"
 s += "cutoff 1.0\n"
+if args["--mdpd"]:
+    s += "manybody cutoff %s\n" % args["--mdpd"]
 s += "boundary halo %.1f\n\n" % halo
 
 s += "timestep %.3f\n" % dt
