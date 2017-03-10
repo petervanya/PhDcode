@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 """Usage:
     dlms_binmixt.py [--f <f> --L <L> --rho <rho> --xyz --vel <T>]
-                    [--aii <aii> --da <da>]
+                    [--aii <aii> --da <da> --loc]
 
 Generate a binary mixture (A/B particles) CONFIG and FIELD file 
 for DL_MESO package.
@@ -14,6 +14,7 @@ Options:
     --da <da>      Excess interaction between A and B [default: 5]
     --xyz          Create xyz file
     --vel <T>      Initialise velocities at given temperature T
+    --loc          Localise A beads in left and B beads in right side of box
 
 pv278@cam.ac.uk, 02/06/16, modified 15/02/16
 """
@@ -49,6 +50,9 @@ if __name__ == "__main__":
     NB = N - NA
     names = ["A"] * NA + ["B"] * NB
     xyz = np.random.rand(N, 3) * L
+    if args["--loc"]:
+        xyz[:NA, 0] = np.random.rand(NA) * f * L[0]
+        xyz[NA:, 0] = np.random.rand(NB) * (1 - f) * L[0] + f * L[0]
 
     levcfg = 0
     if args["--vel"]:
