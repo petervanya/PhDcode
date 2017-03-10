@@ -6,16 +6,33 @@ formatting style.
 pv278@cam.ac.uk, 17/06/16
 """
 import numpy as np
+import sys
+
 
 # ===== manipulate output
 def read_xyzfile(outfile):
-    """Read one xyz outfile into a numpy matrix"""
-    if not os.path.isfile(outfile):
-         sys.exit("File %s not found." % outfile)
-    A = open(outfile, "r").readlines()[2:]
+    """Read one xyz outfile into a numpy matrix.
+    Return one (n, 4) matrix."""
+    try:
+        A = open(outfile, "r").readlines()[2:]
+    except FileNotFoundError:
+        sys.exit("File %s not found." % outfile)
     A = [line.split() for line in A]
     A = np.array(A, order="F").astype(float)
     return A
+
+
+def read_xyzfile2(outfile):
+    """Read one xyz outfile into a numpy matrix.
+    Return vector of names and (n, 3) xyz matrix."""
+    try:
+        A = open(outfile, "r").readlines()[2:]
+    except FileNotFoundError:
+        sys.exit("File %s not found." % outfile)
+    A = open(outfile, "r").readlines()[2:]
+    A = np.array([line.split() for line in A]).astype(float)
+    names, xyz = A[:, 0].astype(int), A[:, 1:4]
+    return names, xyz
 
 
 def save_xyzfile(fname, mat):
