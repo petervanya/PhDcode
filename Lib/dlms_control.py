@@ -38,7 +38,7 @@ halo = float(args["--halo"])
 eqsteps = int(args["--eq"])
 
 
-s = "pokus\n\n"
+s = "bla\n\n"
 
 s += "volume %.1f %.1f %.1f\n" % (L[0], L[1], L[2])
 s += "temperature 1.0\n"
