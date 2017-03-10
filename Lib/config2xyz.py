@@ -38,7 +38,8 @@ if __name__ == "__main__":
         conf_str = np.array(conf_str[2:])
     else:              # skip over box coordinates
         box = np.array([line.split() for line in conf_str[2:5]]).astype(float)
-        print("System size:", np.diag(box))
+        L = np.diag(box)
+        print("System size:", L)
         conf_str = np.array(conf_str[5:])
 
     print("Levcfg = %i" % levcfg)
@@ -60,18 +61,20 @@ if __name__ == "__main__":
         for i, bt in enumerate("ABCWEP"):
             names_dict[bt] = i+1
     else:
-        for i in enumerate(set(names)):   # bead types to numbers
+        for i in enumerate(sorted(set(names))):   # bead types to numbers
             names_dict[i[1]] = i[0]+1
+    print("Bead names: %s" % names_dict)
     names = [names_dict[i] for i in names]
 
     xyz = np.array([[float(j) for j in conf_str[i].split()] for i in mask+1])
 
     if args["--shift"]:
-        L = np.array([np.round((max(xyz[:, i]) - min(xyz[:, i])), 1) \
-                for i in range(3)])
+        if imcon == 0:
+            L = np.array([np.round((max(xyz[:, i]) - min(xyz[:, i])), 1) \
+                    for i in range(3)])
         xyz += L
         xyz = xyz % L
-        print("Shifted box by", L)
+        print("Shifted box by", L/2)
     if args["--shift2"]:
         s = args["--shift2"].split()
         if len(s) == 1:
