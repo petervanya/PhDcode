@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 """Usage:
     default_ptfe_input.py bulk [--seed <s> --L <L> --lmbda <l> --gamma <g>]
-                   [--method <m>]
-    default_ptfe_input.py slab [--width <w> --el <el> --rpt <rpt>]
+                   [--method <m> --r <r>]
+    default_ptfe_input.py slab [--width <w> --el <el> --rpt <rpt> --r <r>]
                    [--seed <s> --L <L> --lmbda <l> --gamma <g> --method <m>]
                           
 
@@ -19,6 +19,7 @@ Options:
     --width <w>    Nafion slab width in nm [default: 10]
     --rpt <rpt>    Ratio of width of Pt segment on electrode [default: 0]
     --method <m>   Use either 25 (1) or 6*25 (2) as repulsion [default: 2]
+    --r <r>        Polymerisation of Nafion chain [default: 15]
 
 pv278@cam.ac.uk, 16/06/16
 """
@@ -95,7 +96,7 @@ seed = int(args["--seed"])
 L = float(args["--L"])
 T = 1.0
 mono_beads = "AAABC"
-Nmc = 15
+Nmc = int(args["--r"])
 lmbda = int(args["--lmbda"])
 gamma = float(args["--gamma"])
 k0 = 4.0
