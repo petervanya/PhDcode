@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 """Usage:
-    dlms_extract_configs.py <nf> [--levcfg <levcfg> --nafion --histpath <hp>]
+    dlms_extract_configs.py <nf> [--levcfg <levcfg> --shift --nafion]
+                                 [--histpath <hp>]
 
 Extact config frames from DL_MESO HISTORY files, 
 convert them to xyz files and place into Dump/ directory.
@@ -10,13 +11,14 @@ Arguments:
     <nf>             Number of config frames requested [default: 10]
 
 Options:
+    --shift          true if shift of the box required
     --levcfg <lc>    Configuration level [default: 0]
     --nafion         Bead ordering "ABCWEP"
     --histpath <hp>  Path of the DL_MESO 'history_config.exe' file
 
 pv278@cam.ac.uk, 21/06/16
 """
-import os, sys
+import os, sys, time
 import subprocess
 from subprocess import Popen, PIPE
 from docopt import docopt
@@ -47,8 +49,9 @@ def get_cores():
 args = docopt(__doc__)
 Nf = int(args["<nf>"])
 levcfg = int(args["--levcfg"])
+shift = "--shift" if args["--shift"] else ""
+nafion = "--nafion" if args["--nafion"] else ""
 
-# number of frames
 Nhf = get_timesteps()
 Nc = get_cores()
 print("Cores: %i | Total number of frames: %i | Requested frames: %i" % \
@@ -59,20 +62,21 @@ if not os.path.exists("Dump"):
 
 hist_path = "~/sw/bin" if not args["--histpath"] else args["--histpath"]
 
-hist_script = os.path.expanduser(hist_path + "/history_config.exe")
-transf_script = os.path.dirname(__file__) + "/config2xyz.py"
-nafion_flag = "--nafion" if args["--nafion"] else ""
-if not os.path.isfile(hist_script):
+history_exe = os.path.expanduser(hist_path + "/history_config.exe")
+config2xyz = os.path.dirname(__file__) + "/config2xyz.py"
+if not os.path.isfile(history_exe):
     sys.exit("Cannot find history_config.exe.")
-if not os.path.isfile(transf_script):
+if not os.path.isfile(config2xyz):
     sys.exit("Cannot find config2xyz.py.")
 
+ti = time.time()
 for i in range(Nhf-Nf+1, Nhf+1):
-    cmd = "%s %i %i %i" % (hist_script, Nc, levcfg, i)
-    print("Running: %s" % cmd)
+    cmd = "%s %i %i %i" % (history_exe, Nc, levcfg, i)
     subprocess.call(cmd, shell=True)
-    subprocess.call("%s CONFIG.out --shift %s" % \
-                   (transf_script, nafion_flag), shell=True)
+    cmd = "%s CONFIG.out %s %s" % (config2xyz, shift, nafion)
+    subprocess.call(cmd, shell=True)
     subprocess.call("mv CONFIG.xyz Dump/dump_%03i.xyz" % i, shell=True)
+tf = time.time()
+print("Total time: %.2f s." % (tf - ti))
 
 
