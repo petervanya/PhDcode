@@ -1,10 +1,13 @@
 #!/usr/bin/env python
-"""Usage: dpd_pressure.py <frame> [--lc]
+"""Usage:
+    dpd_pressure.py <frame> [--tensor]
 
-Compute the virial pressure.
+Compute the virial pressure:
+* full
+* pressure tensor
 
 Options:
-    --lc      Use link cells
+    --tensor    Calculate full pressure tensor
 
 pv278@cam.ac.uk, 06/03/17
 """
@@ -14,7 +17,7 @@ from math import sqrt
 from numba import jit, float64, int64
 import sys, time
 from docopt import docopt
-from dlms_lib import read_xyzfile
+from dlms_lib import read_xyzfile2
 from link_cells import LinkCells
 
 
@@ -73,9 +76,9 @@ def parse_control():
 @jit(float64(float64, float64, float64), nopython=True)
 def force(nr, a, rc=1.0):
     """
-    nr: norm of vector
-    a: interaction parameter
-    rc: cutoff
+    * nr: norm of a vector
+    * a: interaction parameter
+    * rc: cutoff
     """
     return a * (1 - nr / rc) if nr < rc else 0.0
 
@@ -84,20 +87,19 @@ def force(nr, a, rc=1.0):
 def norm_numba(r):
     rn = 0.0
     for ri in r:
-        rn += ri*ri
+        rn += ri * ri
     return sqrt(rn)
 
 
 @jit(float64(int64[:], float64[:, :], float64[:, :], float64[:, :], float64))
-def virial_p(names, xyz, coeffs, box, rc=1.0):
-    N = len(names)
+def virial_pressure(names, xyz, coeffs, box, rc=1.0):
     inv_box = pinv(box)
     V = np.prod(np.diag(box))
 
     G, Gn = np.zeros(3), np.zeros(3)
     dr, drn = np.zeros(3), np.zeros(3)
-
     p = 0.0
+
     for i in range(N):
         for j in range(i):
             dr = xyz[i] - xyz[j]
@@ -106,28 +108,22 @@ def virial_p(names, xyz, coeffs, box, rc=1.0):
             drn = box @ Gn
             nr = norm_numba(drn)
 
-#            F = force(nr, coeffs[names[i], names[j]], rc)
-#            p += nr * F
-            pp = coeffs[names[i], names[j]] * (1 - nr / rc) * nr \
-                    if nr < rc else 0.0
-            p += pp
+            F = force(nr, coeffs[names[i], names[j]], rc)
+            p += nr * F
     return p / (3 * V)
 
 
-def virial_p_lc(names, xyz, coeffs, box, rc=1.0):
-    N = len(names)
+@jit(float64(int64[:], float64[:, :], float64[:, :], float64[:, :], float64))
+def virial_pressure_lc(names, xyz, coeffs, box, rc=1.0):
+    inv_box = pinv(box)
     L = np.diag(box)
     V = np.prod(L)
-    inv_box = pinv(box)
 
     Nx = int(max(L // rc))
     lc = LinkCells(L, Nx)
     lc.cell_pairs()
     lc.allocate_atoms(xyz)
 
-    Nintra = sum([len(v) * (len(v) - 1) // 2 for v in lc.cells.values()])
-    Ninter = sum([len(lc.cells[p[0]]) * len(lc.cells[p[1]]) for p in lc.pairs])
-    dv = np.zeros(Nintra + Ninter)
     G, Gn = np.zeros(3), np.zeros(3)
     dd, ddn = np.zeros(3), np.zeros(3)
     p = 0.0
@@ -154,32 +150,91 @@ def virial_p_lc(names, xyz, coeffs, box, rc=1.0):
     return p / (3 * V)
 
 
+@jit(float64[:, :](int64[:], float64[:, :], float64[:, :], float64[:, :], \
+        float64))
+def pressure_tensor(names, xyz, coeffs, box, rc=1.0):
+    """Compute pressure tensor from positions and DPD force field"""
+    L = np.diag(box)
+    V = np.prod(L)
+    inv_box = pinv(box)
+
+    Nx = int(max(L // rc))
+    lc = LinkCells(L, Nx)
+    lc.cell_pairs()
+    lc.allocate_atoms(xyz)
+    G, Gn = np.zeros(3), np.zeros(3)
+    dr, drn = np.zeros(3), np.zeros(3)
+    P = np.zeros((3, 3))
+
+    for cell in lc.cells.values():
+        Na = len(cell)
+        for i in range(Na):
+            for j in range(i):
+                r = xyz[cell[i]] - xyz[cell[j]]
+                F = force_vec(r, coeffs[names[i], names[j]], rc)
+                P += np.outer(r, F)
+
+    for pair in lc.pairs:
+       for i in lc.cells[pair[0]]:
+           for j in lc.cells[pair[1]]:
+                dr = xyz[i] - xyz[j]
+                G = inv_box @ dr
+                Gn = G - np.round(G)
+                drn = box @ Gn
+                F = force_vec(drn, coeffs[names[i], names[j]], rc)
+                P += np.outer(drn, F)
+
+    return P / V
+
+
 if __name__ == "__main__":
     args = docopt(__doc__)
-    frame = args["<frame>"]
-    A = read_xyzfile(frame)
-    names, xyz = A[:, 0], A[:, 1:4]
-    names = names.astype(int) - 1
+    frames = glob.glob(args["<frames>"])
+    Nf = len(frames)
     coeffs = parse_field()
     Ls = parse_control()
     box = np.diag(Ls)
     V = np.prod(Ls)
-    N = len(names)
     print("===== Virial pressure calculation for DPD =====")
     print("Box:", Ls)
     print("Interaction coefficients:\n", coeffs)
 
-    print("Calculating pressure...")
-    ti = time.time()
-    if args["--lc"]:
-        pvir = virial_p_lc(names, xyz, coeffs, box)
-    else:
-        pvir = virial_p(names, xyz, coeffs, box)
-    tf = time.time()
-    print("Time: %.2f s." % (tf - ti))
-    print("Virial pressure:", pvir)
-    ptot = pvir + N / V       # kT = 1.0
-    print("Total pressure:", ptot)
+    if args["--tensor"]:
+        print("Calculating pressure tensor...")
+        p, psq, pi = 0.0, 0.0, 0.0
+        P, Pi = np.zeros((3, 3)), np.zeros((3, 3))
 
+        ti = time.time()
+        for frame in frames:
+            names, xyz = read_xyzfile2(frame)
+            names = names.astype(int) - 1
+            print("Pressure for frame %s... " % frame, end="")
+            Pi = pressure_tensor(names, xyz, coeffs, box)
+            pi = sum(np.diag(Pi))
+            psq += pi**2 / Nf
+            P += Pi / Nf
+            p += pi / Nf
+            print("Pressure: %.2f. Done." % pi)
+        tf = time.time()
+        print("Time: %.2f s." % (tf - ti))
+
+        stdp = sqrt(psq - p**2)
+        print("Pressure tensor:\n" P)
+        print("Mean pressure: %.2f | Std: %.2f" % (p, stdp))
+
+    else:
+        print("Calculating virial pressure...")
+        pvir = 0.0
+        ti = time.time()
+        for frame in frames:
+            names, xyz = read_xyzfile2(frame)
+            names = names.astype(int) - 1
+            N = len(names)
+            pvir += virial_pressure_lc(names, xyz, coeffs, box)
+        tf = time.time()
+        print("Time: %.2f s." % (tf - ti))
+
+        print("Virial pressure:", pvir)
+        print("Total pressure:", pvir + N / V)   # kT = 1.0
 
 
