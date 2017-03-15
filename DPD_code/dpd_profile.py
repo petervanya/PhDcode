@@ -14,7 +14,7 @@ Arguments:
 Options:
     --d <d>        Relative depth at which to profile the plane [default: 0.5]
     --h <h>        Relative thickness of the profile [default: 0.1]
-    --L <L>        Box size [default: 40]
+    --L <L>        Box size, e.g. '10' or '10 10 10'
     --nbins <nb>   Number of bins for the histogram [default: 100]
 
 pv278@cam.ac.uk, 22/02/17
@@ -28,7 +28,7 @@ from docopt import docopt
 
 def guess_box_size(xyz):
     """Infer box size from xyz matrix"""
-    return np.array([np.round(max(xyz[:, i]) - min(xyz[:, i]), 0) \
+    return np.array([np.round(max(xyz[:, i]) - min(xyz[:, i]), 1) \
             for i in range(1, 4)])
 
 
@@ -66,6 +66,18 @@ def create_2d_profile(frames, bt, ax, nbins, D, H):
     return res
 
 
+def parse_box(L_str):
+    """Convert cmd ln arg of box size in string to a vector"""
+    s = L_str.split()
+    if len(s) == 1:
+        L = np.ones(3) * float(s[0])
+    elif len(s) == 3:
+        L = np.array(s).astype(float)
+    else:
+        sys.exit("String '--L' should have size of 1 or 3.")
+    return L
+
+
 if __name__ == "__main__":
     args = docopt(__doc__)
     frames = glob.glob(args["<frames>"])
@@ -78,8 +90,10 @@ if __name__ == "__main__":
     xyz_types = set(xyz[:, 0].astype(int))
     if bt not in xyz_types:
         sys.exit("Requested bead type not present in the frames.")
-#    L = float(args["--L"])
-    L = guess_box_size(xyz)
+    if args["--L"]:
+        L = parse_box(args["--L"])
+    else:
+        L = guess_box_size(xyz)
 
     ax_raw = args["<ax>"]
     axes = {"x": 0, "y": 1, "z": 2}
@@ -88,7 +102,7 @@ if __name__ == "__main__":
     ax = axes[ax_raw]
 
     print("===== DPD profile =====")
-    print("Bead type: %i Box: %s" % (bt, str(L)))
+    print("Bead type: %i | Box: %s" % (bt, str(L)))
     print("Bins: %i | xyz frames: %i" % (nbins, Nf))
     
     if args["1d"]:
@@ -99,7 +113,6 @@ if __name__ == "__main__":
         ti = time.time()
         profile = create_1d_profile(frames, bt, ax, bins)
         Lsurf = L[list(set(range(3)).difference([ax]))]
-        print(Lsurf, dr, dr / np.prod(Lsurf))
         profile /= (dr * np.prod(Lsurf))
         tf = time.time()
 
