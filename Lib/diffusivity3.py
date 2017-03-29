@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 """Usage:
     diffusivity3.py <frames> [--bt <bt> --nb <nb> --si --mb <mb> --cut <rc>]
+                             [--start <st>]
 
 Compute diffusivity (Einstein coeff) 
 in bulk and slab materials for a given bead type.
@@ -8,11 +9,13 @@ in bulk and slab materials for a given bead type.
 Averating through at least 50 frames recommended (navg).
 
 Options:
-    --bt <bt>    Bead type [default: 1]
-    --nb <nb>    Number of beads for averaging, or 'all' [default: 1]
-    --si         Convert to SI units
-    --mb <mb>    Rescale by number of molecules in a bead [default: 6]
-    --cut <rc>   Cutoff to identify PBC crossings [default: 5.0]
+    --bt <bt>      Bead type [default: 1]
+    --nb <nb>      Number of beads for averaging, or 'all' [default: 1]
+    --si           Convert to SI units
+    --mb <mb>      Rescale by number of molecules in a bead [default: 6]
+    --cut <rc>     Cutoff to identify PBC crossings [default: 5.0]
+    --start <st>   Fraction of frames after which to start fitting a line
+                   over rsq vs t [default: 0.666]
 
 pv278@cam.ac.uk, 15/11/16
 """
@@ -95,10 +98,9 @@ def parse_control():
 
 if __name__ == "__main__":
     args = docopt(__doc__)
-    frames = glob.glob(args["<frames>"])
+    frames = sorted(glob.glob(args["<frames>"]))
     if len(frames) == 0:
         sys.exit("0 frames captured.")
-    frames.sort()
     Nf = len(frames)
     bt = int(args["--bt"])
     dt, freq, L = parse_control()
@@ -126,7 +128,10 @@ if __name__ == "__main__":
         xyzs[:, :, i] = read_from_top(frames[i], Nb, btype=bt)
     Rsq = np.zeros((Nf, 3))
     t = np.arange(0, Nf * tau, tau)
-    N1 = Nf // 3  # start fitting from this point
+    start = float(args["--start"])
+    if start > 1.0 or start < 0.0:
+        sys.exit("Enter start between 0 and 1.")
+    N1 = int(Nf * start)  # start fitting from this point
 
     # Calculating distances
     ti = time.time()
