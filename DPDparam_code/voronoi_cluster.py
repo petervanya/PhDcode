@@ -1,7 +1,8 @@
 #!/usr/bin/env python
-"""Usage: cluster.py <Nm> <frame> [--L <L> --seed <seed>]
+"""Usage:
+    voronoi_cluster.py <Nm> <frame> [--L <L> --seed <seed>]
 
-Cluster N molecules using Voronoi cells of N/Nm randomly generated
+Cluster N molecules into Voronoi cells of N/Nm randomly generated
 points in a box, where Nm is the degree of coarse-graining 
 (number of molecules in a CG particle).
 Fix: box size.
@@ -16,7 +17,7 @@ import numpy as np
 from numpy.linalg import pinv, norm
 from numba import jit, float64, int64
 from math import sqrt
-import time, glob
+import time, glob, sys
 from docopt import docopt
 from dlms_lib import read_xyzfile2, save_xyzfile
 
@@ -56,12 +57,19 @@ def gen_coms(xyz, pts_d):
 if __name__ == "__main__":
     args = docopt(__doc__)
     seed = int(args["--seed"])
-    Nm = int(args["<Nm>"])
-    L = float(args["--L"])
-    box = np.diag(np.ones(3) * L)
-
     frames = sorted(glob.glob(args["<frame>"]))
     Nf = len(frames)
+    if Nf == 0: sys.exit("No frames captured.")
+    Nm = int(args["<Nm>"])
+
+    s = args["--L"].split()
+    if len(s) == 1:
+        L = float(s[0]) * np.ones(3)
+    elif len(s) == 3:
+        L = np.array(s).astype(float)
+    else:
+        sys.exit("<L> should have size 1 or 3.")
+    box = np.diag(np.ones(3) * L)
 
     names, xyz = read_xyzfile2(frames[0])
     N = len(xyz)
@@ -72,6 +80,7 @@ if __name__ == "__main__":
 
     print("==== Voronoi mesh on random points =====")
     print("CG level: %i | Seed: %i | Frames: %i" % (Nm, seed, Nf))
+    print("Box: %s" % L)
 
     for frame in frames:
         print("\nFrame: %s" % frame)
