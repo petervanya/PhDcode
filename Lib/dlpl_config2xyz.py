@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 """Usage: 
        dlpl_config2xyz.py <input> [--shift --shift-by <a>]
-                          [--elem-names --force --vel]
+                                  [--elem-names --force --vel]
 
 Transform DL_POLY CONFIG file into xyz file.
 
@@ -9,8 +9,8 @@ Options:
     --shift          Shift box from centre to +ve quadrant
     --shift-by <a>   Shift by pre-defined vector
     --elem-names     Keep element names in xyz file, else use numbers
-    --force          Save forces
     --vel            Save velocities
+    --force          Save forces
 
 pv278@cam.ac.uk, 10/11/16
 """
