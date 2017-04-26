@@ -1,15 +1,13 @@
 #!/usr/bin/env python
-"""Usage: 
-    process_diff_bulk.py parse [--path <p>]
-    process_diff_bulk.py plot <dfpath> [--sparse --pdf]
+"""Usage:
+    process_diff_bulk.py --bt <bt> [--path <p> --sparse --pdf]
 
 [AD HOC] Process diffusivities for bulk Nafion. Collect all data about
 diffusivities of water in Nafion into one table 
 and plot the relevant figures.
 
 Arguments:
-    parse       Create a master dataframe and save it
-    <dfpath>    Path of the dataframe with diffusivities
+    --bt <bt>      Bead type
 
 Options:
     --path <p>     Path with logfiles [default: ./]
@@ -21,16 +19,16 @@ pv278@cam.ac.uk, 13/02/16
 import numpy as np
 from pandas import DataFrame, read_csv
 import matplotlib.pyplot as plt
-from matplotlib.ticker import FormatStrFormatter
 import matplotlib
-import os
+import sys
 from docopt import docopt
 
 
 matplotlib.rcParams.update({'font.size': 24})
+bt_colors = {1: "red", 2: "red", 3: "green", 4: "blue", 5: "grey", 6: "brown"}
 
 
-def collect_data(default_path, lmbdas):
+def collect_data(default_path, lmbdas, bt):
     """Visit directory for each lmbda and
     parse the outfile for 1d, 2d, and 3d diffusivities"""
     cols = ["lmbda", "Dx", "Dy", "Dz", "Dxy", "Dyz", "Dxz", "D3d"]
@@ -39,7 +37,7 @@ def collect_data(default_path, lmbdas):
     cnt = 0
     for l in lmbdas:
         data = [l]
-        fname = "diffusivity_l%i.log" % l
+        fname = "diffusivity_l%i_b%i.log" % (l, bt)
         fpath = default_path + fname
         try:
             f = open(fpath, "r").readlines()
@@ -59,7 +57,7 @@ def collect_data(default_path, lmbdas):
     return df
 
 
-def plot(df, D, lmbdas, to_pdf, is_sparse):
+def plot(df, D, lmbdas, to_pdf, bt, is_sparse):
     """Plot parallel and normal diffusivities for electrode
     * df: dataframe
     * D: either 'Dx' or 'Dyz'
@@ -71,7 +69,7 @@ def plot(df, D, lmbdas, to_pdf, is_sparse):
 
     sel = np.array(df[["lmbda", D]])
     plt.plot(sel[:, 0], sel[:, 1] * 1e9, \
-            "D-", lw=4, ms=10, mew=0, label="Bulk")
+            "D-", lw=4, ms=10, mew=0, label="Bulk", color=bt_colors[bt])
 
     ymax_temp = (max(sel[:, 1] * 1e9) // 10 + 1) * 10  # round to 10s
     if ymax_temp > ymax: ymax = ymax_temp
@@ -93,43 +91,44 @@ def plot(df, D, lmbdas, to_pdf, is_sparse):
 
     fmt = "pdf" if to_pdf else "png"
     sp = "_sp" if is_sparse else ""
-    plotname = "%s/%s%s.%s" % \
-            (default_path, D, sp, fmt)
+    plotname = "%s/%s%s_b%i.%s" % \
+            (default_path, D, sp, bt, fmt)
     plt.savefig(plotname, bbox_inches='tight')
 
 
 if __name__ == "__main__":
     args = docopt(__doc__)
     default_path = args["--path"]
+    bt = int(args["--bt"])
+    print("Processing diffusivty, bead type: %i" % bt)
     print("Directory: %s" % default_path)
 
-    if args["parse"]:
-        lmbdas = sorted(list(range(4, 25, 2)) + [9])
-        df = collect_data(default_path, lmbdas)
-        dfname = default_path + "all_diff.csv"
-        df.to_csv(dfname, delim=",")
-        print("Dataframe saved in %s." % dfname)
+    lmbdas = sorted(list(range(4, 25, 2)) + [9])
+    df = collect_data(default_path, lmbdas, bt)
+    dfname = default_path + "all_diff_b%i.csv" % bt
+    df.to_csv(dfname, delim=",")
+    print("Dataframe saved in %s." % dfname)
 
-    if args["plot"]:
-        dfpath = args["<dfpath>"]
-        if args["--sparse"]:
-            lmbdas = [6, 9, 12, 16]
-        else:
-            lmbdas = list(range(4, 25, 2))
-        df = read_csv(dfpath)
-        df = df.loc[df.lmbda.isin(lmbdas)]
 
-        to_pdf = args["--pdf"]
-        if to_pdf:           # use latex fonts
-            plt.rc('text', usetex=True)
-            plt.rc('font', family='serif')
+    if args["--sparse"]:
+        lmbdas = [6, 9, 12, 16]
+    else:
+        lmbdas = list(range(4, 25, 2))
+    df = df.loc[df.lmbda.isin(lmbdas)]
+    if df.empty:
+        sys.exit("Error: Empty dataframe.")
 
-        print("Plotting different electrodes.")
-        print("Normal diffusivities.")
-        plot(df, "Dx", lmbdas, to_pdf, args["--sparse"])
-        print("Parallel diffusivities.")
-        plot(df, "Dyz", lmbdas, to_pdf, args["--sparse"])
-        print("Bulk diffusivities.")
-        plot(df, "D3d", lmbdas, to_pdf, args["--sparse"])
+    to_pdf = args["--pdf"]
+    if to_pdf:           # use latex fonts
+        plt.rc('text', usetex=True)
+        plt.rc('font', family='serif')
+
+    print("Plotting different electrodes.")
+    print("Normal diffusivities.")
+    plot(df, "Dx", lmbdas, to_pdf, bt, args["--sparse"])
+    print("Parallel diffusivities.")
+    plot(df, "Dyz", lmbdas, to_pdf, bt, args["--sparse"])
+    print("Bulk diffusivities.")
+    plot(df, "D3d", lmbdas, to_pdf, bt, args["--sparse"])
 
 
