@@ -1,13 +1,13 @@
 #!/usr/bin/env python
 """Usage:
-    config2xyz.py <input> [--shift --shift2 <a> --nafion]
+    config2xyz.py <input> [--shift --shift-by <a> --nafion]
 
 Transform DL_MESO CONFIG file into xyz file.
 
 Options:
-    --shift        Shift box from centre to the +ve quadrant by inferring box size
-    --shift2 <a>   Shift by pre-defined vector
-    --nafion       Use "ABCWEP" bead order
+    --shift          Shift box from centre to the +ve quadrant by guessing box size
+    --shift-by <a>   Shift by pre-defined vector
+    --nafion         Use "ABCWEP" bead order
 
 pv278@cam.ac.uk, 31/05/16
 """
@@ -75,8 +75,8 @@ if __name__ == "__main__":
         xyz += L
         xyz = xyz % L
         print("Shifted box by", L/2)
-    if args["--shift2"]:
-        s = args["--shift2"].split()
+    if args["--shift-by"]:
+        s = args["--shift-by"].split()
         if len(s) == 1:
             L = float(s[0]) * np.ones(3)
         elif len(s) == 3:
@@ -91,18 +91,21 @@ if __name__ == "__main__":
     save_xyzfile(fname, names, xyz)
 
     if levcfg == 1:
-        vel = np.array([[float(j) for j in conf_str[i].split()] for i in mask+2])
+        vel = np.array([[float(j) for j in conf_str[i].split()] \
+                for i in mask+2])
         fname = infile.strip(".out") + ".vel"
         save_xyzfile(fname, names, vel)
         print("Velocity file saved in", fname)
 
     if levcfg >= 2:
-        vel = np.array([[float(j) for j in conf_str[i].split()] for i in mask+2])
+        vel = np.array([[float(j) for j in conf_str[i].split()] \
+                for i in mask+2])
         fname = infile.strip(".out") + ".vel"
         save_xyzfile(fname, names, vel)
         print("Velocity file saved in", fname)
 
-        forces = np.array([[float(j) for j in conf_str[i].split()] for i in mask+3])
+        forces = np.array([[float(j) for j in conf_str[i].split()] \
+                for i in mask+3])
         fname = infile.strip(".out") + ".for"
         save_xyzfile(fname, names, vel)
         print("Force file saved in", fname)

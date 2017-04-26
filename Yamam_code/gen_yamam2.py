@@ -18,8 +18,8 @@ from numpy import pi, cos, sin
 import sys
 import yaml
 from docopt import docopt
-import Lib.lmp_lib as ll
-import Lib.dlms_lib as dlms
+import lmp_lib as ll
+import dlms_lib as dlms
 
 NA = 6.022e23
 AMU = 1.66e-27
@@ -203,7 +203,7 @@ def gen_bonds_one_chain(Nmc, mono_beads, start=0):
     return bond_mat[1:]    # reject 1st dummy bond
 
 
-def gen_inter_coeffs(atoms_yaml, bead_types, gamma=4.5, rc=1.0):
+def gen_inter_coeffs(atoms_yaml, bead_types, a_DPD, gamma=4.5, rc=1.0):
     """
     Generate atomic params a_ij for all possible combinations 
     given number of atom types. Read custom bonds from input.yaml file
@@ -235,6 +235,7 @@ if __name__ == "__main__":
     r0 = data["equilibrium-dist"]
     lmbda = data["water-uptake"]
     L = data["box-size"]
+    box = L * np.eye(3)
 
     print("=== Creating input file for Nafion for %s ===" % \
           ("DL_MESO" if args["dlms"] else "LAMMPS"))
@@ -271,23 +272,24 @@ if __name__ == "__main__":
     for i, bt in enumerate(bead_types): bt2num[bt] = i+1
     atom_ids_n = [bt2num[bt] for bt in atom_ids_l]
 
-    a_ij = gen_inter_coeffs(data["chi-params"], bead_types, gamma, rc=1.0)
+    a_ij = gen_inter_coeffs(data["chi-params"], bead_types, a_DPD, gamma, rc=1.0)
     k_ij = {1: [k0, r0]}
     masses = dict( (i, 1.0) for i in range(1, Nbt+1) )
 
     # ==== printing
     if args["dlms"]:
         fname = "CONFIG"
-        dlms.save_config(fname, atom_ids_l, xyz)
+        dlms.save_config(fname, atom_ids_l, xyz, box)
         print("Coordinates file saved in %s" % fname)
  
         bond_mat = gen_bonds_one_chain(Nmc, mono_beads, start=0)
         print("FIELD: %i bonds in a chain" % len(bond_mat))
         bead_list = list(mono_beads*Nmc)
-        nafion_mol_str = dlms.mol2str("nafion", Nc, bead_list, bond_mat, k_ij)
+        nafion_mol_str = dlms.mol2str("nafion", Nc, bead_list, bond_mat, \
+                                      bond_type="harm", k0=k0, r0=r0)
         field_string = "bla\n\n" +\
-                       dlms.species2str(bead_types, bead_pop) +\
-                       dlms.inter2str(a_ij, method="dpd") + \
+                       dlms.species2str(bead_pop) +\
+                       dlms.inter2str(a_ij) + \
                        "MOLECULES 1\n" + \
                        nafion_mol_str + "\n" + \
                        "close\n"
