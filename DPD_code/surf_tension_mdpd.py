@@ -1,11 +1,16 @@
 #!/usr/bin/env python
 """Usage: 
-    surf_tension_mdpd.py <frames> <coord> [--bins <nb>]
+    surf_tension_mdpd.py <frames> <coord> (kb | ik) [--bins <nb>]
 
 Compute surface tension from Kirkwood relation.
 
+Arguments:
+    <coord>      Coordinate along which to calculate s.t. 'x', 'y', 'z'
+    kb           Kirkwood-Buff version
+    ik           Irving-Kirkwood version, with pressure along coordinate
+
 Options:
-    --bins <nb>    Number of bins [default: 10]
+    --bins <nb>  Number of bins [default: 10]
 
 pv278@cam.ac.uk, 22/03/17
 """
@@ -65,7 +70,7 @@ def parse_field():
     int_d = {}    # interaction dict
     for i in range(Ni):
         tmp = int_lines[i].split()
-        if tmp[1] != "mdpd":
+        if tmp[2] != "mdpd":
             sys.exit("Interaction type: %s. Should be: mdpd." % tmp[1])
         int_d[tmp[0] + " " + tmp[1]] = tmp[3:5]
 
@@ -79,16 +84,6 @@ def parse_field():
         int_B[j, i] = v[1]
 
     return int_A, int_B
-
-
-@jit(float64(float64, float64, float64), nopython=True)
-def force(nr, a, rc=1.0):
-    """
-    nr: norm of vector
-    a: interaction parameter
-    rc: cutoff
-    """
-    return a * (1 - nr / rc) if nr < rc else 0.0
 
 
 @jit(float64(float64, float64), nopython=True)
@@ -140,7 +135,7 @@ def weight(nr, rc=1.0):
 
 @jit(float64[:](float64[:], float64, float64, float64, float64,\
         float64, float64), nopython=True)
-def force_vec_mdpd(r, rho_i, rho_j, A, B, rd=0.75, rc=1.0):
+def force_vec_mdpd(r, A, B, rho_i, rho_j, rd=0.75, rc=1.0):
     nr = 0.0
     for ri in r:
         nr += ri * ri
@@ -152,6 +147,18 @@ def force_vec_mdpd(r, rho_i, rho_j, A, B, rd=0.75, rc=1.0):
     return F
 
 
+@jit(float64(float64, float64, float64, float64, float64, \
+        float64, float64), nopython=True)
+def force_mdpd(nr, A, B, rho_i, rho_j, rd=0.75, rc=1.0):
+    """
+    nr: norm of vector
+    A, B: interaction parameters
+    rho_i, rho_j: local densities
+    rc: cutoff
+    """
+    return A * weight(nr, rc) + B * (rho_i + rho_j) * weight(nr, rd)
+
+
 @jit(float64[:](float64[:], float64, float64), nopython=True)
 def force_vec(r, a, rc=1.0):
     """
@@ -159,8 +166,6 @@ def force_vec(r, a, rc=1.0):
     a: interaction parameter
     rc: cutoff
     """
-#    nr = norm_numba(r)
-#    return a * (1 - nr / rc) * r / nr if nr < rc else 0.0
     nr = 0.0
     for ri in r:
         nr += ri * ri
@@ -169,6 +174,16 @@ def force_vec(r, a, rc=1.0):
     for i in range(3):
         F[i] = a * (1 - nr / rc) * r[i] / nr if nr < rc else 0.0
     return F
+
+
+@jit(float64(float64, float64, float64), nopython=True)
+def force(nr, a, rc=1.0):
+    """
+    nr: norm of vector
+    a: interaction parameter
+    rc: cutoff
+    """
+    return a * (1 - nr / rc) if nr < rc else 0.0
 
 
 @jit(float64(float64[:]), nopython=True)
@@ -208,22 +223,22 @@ def add_images(xyz, Ls, u, rc=1.0):
     return np.r_[xyz, xyz_low, xyz_high]
 
 
-def pressure_inhomo(names, xyz, rho, cA, cB, box, u, Nbins, rd=0.75, rc=1.0):
+def pressure_vec(names, xyz, rho, cA, cB, box, u, Nbins, rd=0.75, rc=1.0):
     """
     Compute pressure along a coordinate u in [0, 1, 2].
     * Nbins: number of bins
     """
-    L = np.diag(box)
-    V = np.prod(L)
+    Ls = np.diag(box)
+    V = np.prod(Ls)
     inv_box = pinv(box)
 
     G, Gn = np.zeros(3), np.zeros(3)
     dr, drn = np.zeros(3), np.zeros(3)
 
-    up = list(set(range(3)).difference([u])) # coords perp. to u
-    A = np.prod(L[up])                       # cross-sectional area
-    du = L[u] / Nbins
-    us = np.arange(du / 2, L[u], du)
+    uperp = list(set(range(3)).difference([u])) # coords perp. to u
+    Area = np.prod(Ls[uperp])                   # cross-sectional area
+    du = Ls[u] / Nbins
+    us = np.arange(du / 2, Ls[u], du)
     P = np.zeros((Nbins, 3))
 
     for ni in range(Nbins):
@@ -232,17 +247,91 @@ def pressure_inhomo(names, xyz, rho, cA, cB, box, u, Nbins, rd=0.75, rc=1.0):
         Nl = len(nums)
         for i in range(Nl):
             for j in range(i):
+                dr = xyz[nums[i]] - xyz[nums[j]]
+                G = inv_box @ dr
+                Gn = G - np.round(G)
+                drn = box @ Gn
+                drn[u] = dr[u]
+
+                A = cA[names[i], names[j]]
+                B = cB[names[i], names[j]]
+                F = force_vec_mdpd(drn, A, B, rho[i], rho[j], rd, rc)
+                P[ni, :] += drn * F * ksi(us[ni], xyz[i, u], xyz[j, u])
+    return P / Area
+
+
+def surf_tension_kb(names, xyz, rho, cA, cB, box, u, Nbins, rd=0.75, rc=1.0):
+    """Kirkwood-Buff version of computing surface tension"""
+    N = len(xyz)
+    L = np.diag(box)
+    V = np.prod(L)
+    inv_box = pinv(box)
+
+    G, Gn = np.zeros(3), np.zeros(3)
+    dr, drn = np.zeros(3), np.zeros(3)
+
+    uperp = list(set(range(3)).difference([u])) # coords perp. to u
+    Area = np.prod(L[uperp])                    # cross-sectional area
+    gamma = 0.0
+    for i in range(N):
+        for j in range(i):
+            dr = xyz[i] - xyz[j]
+            G = inv_box @ dr
+            Gn = G - np.round(G)
+            drn = box @ Gn
+
+            A = cA[names[i], names[j]]
+            B = cB[names[i], names[j]]
+            nr = norm_numba(drn)
+            F = force_mdpd(nr, A, B, rho[i], rho[j], rd, rc)
+            gamma += (3 * drn[u]**2 - nr**2) / (2 * nr) * F
+    return gamma / (2 * Area)
+
+
+def surf_tension_kb_lc(names, xyz, rho, cA, cB, box, u, Nbins, rd=0.75, rc=1.0):
+    """Kirkwood-Buff version of computing surface tension"""
+    N = len(xyz)
+    Ls = np.diag(box)
+    V = np.prod(Ls)
+    inv_box = pinv(box)
+
+    uperp = list(set(range(3)).difference([u])) # coords perp. to u
+    Area = np.prod(Ls[uperp])                   # cross-sectional area
+
+    Nx = int(max(Ls // rc))
+    lc = LinkCells(Ls, Nx)
+    lc.cell_pairs()
+    lc.allocate_atoms(xyz)
+
+    G, Gn = np.zeros(3), np.zeros(3)
+    dr, drn = np.zeros(3), np.zeros(3)
+
+    gamma = 0.0
+    for cell in lc.cells.values():
+        Na = len(cell)
+        for i in range(Na):
+            for j in range(i):
+                drn = xyz[cell[i]] - xyz[cell[j]]
+                A = cA[names[cell[i]], names[cell[j]]]
+                B = cB[names[cell[i]], names[cell[j]]]
+                nr = norm_numba(drn)
+                F = force_mdpd(nr, A, B, rho[cell[i]], rho[cell[j]], rd, rc)
+                gamma += (3 * drn[u]**2 - nr**2) / (2 * nr) * F
+
+    for pair in lc.pairs:
+       for i in lc.cells[pair[0]]:
+           for j in lc.cells[pair[1]]:
                 dr = xyz[i] - xyz[j]
                 G = inv_box @ dr
                 Gn = G - np.round(G)
                 drn = box @ Gn
-
+ 
                 A = cA[names[i], names[j]]
                 B = cB[names[i], names[j]]
-                F = force_vec_mdpd(drn, rho[i], rho[j], A, B, rd, rc)
-                P[ni, :] += drn * F * ksi(us[ni], xyz[i, u], xyz[j, u])
-    return P / A
-
+                nr = norm_numba(drn)
+                F = force_mdpd(nr, A, B, rho[i], rho[j], rd, rc)
+                gamma += (3 * drn[u]**2 - nr**2) / (2 * nr) * F
+    return gamma / (2 * Area)
 
 
 if __name__ == "__main__":
@@ -256,11 +345,13 @@ if __name__ == "__main__":
     box = np.diag(Ls)
     V = np.prod(Ls)
 
-    u = int(args["<coord>"])
+    coord = args["<coord>"]
+    coords = {"x": 0, "y": 1, "z": 2}
+    if coord not in coords.keys():
+        sys.exit("Coordinate must be in ['x', 'y', 'z'].")
+    u = coords[coord]
     Nbins = int(args["--bins"])
     up = list(set(range(3)).difference([u])) # coords perp. to u
-    if u not in range(3):
-        sys.exit("Coordinate must be in [0, 1, 2].")
     du = Ls[u] / Nbins
     us = np.arange(du / 2, Ls[u], du)
     P, Pi = np.zeros((Nbins, 3)), np.zeros((Nbins, 3))
@@ -268,29 +359,46 @@ if __name__ == "__main__":
     gamma, gammai = 0.0, 0.0
 
     print("===== Surface tension =====")
-    print("Pressure along coordinate: %i" % u)
-    print("Box: %s | rd: %.2f" % (Ls, rd))
-    print("Coeffs:\n", coeffsA, coeffsB)
+    print("Pressure along coordinate: %s | method: %s" % \
+            (coord, "IK" if args["ik"] else "KB"))
+    print("Frames: %i | Box: %s | rd: %.2f" % (Nf, Ls, rd))
+    print("Coeffs:\n", coeffsA, "\n", coeffsB)
 
-    ti = time.time()
-    for frame in frames:
-        print("Computing frame %s... " % frame, end="")
-        names, xyz = read_xyzfile2(frame)
-        names = names.astype(int) - 1
-        rho = density(names, xyz, Ls, rd, rc=1.0)
-        xyz = add_images(xyz, Ls, u)
-        Pi = pressure_inhomo(names, xyz, rho, coeffsA, coeffsB, \
-                box, u, Nbins, rd, rc=1.0)
-        gammai = simps(Pi[:, u] - (Pi[:, up[0]] + Pi[:, up[1]]) / 2.0, us)
-        gamma += gammai / Nf
-        P += Pi / Nf
-        print("Gamma:", gammai)
-    tf = time.time()
-    print("Time: %.2f s." % (tf - ti))
+    if args["ik"]:
+        ti = time.time()
+        for frame in frames:
+            print("Computing frame %s... " % frame, end="")
+            names, xyz = read_xyzfile2(frame)
+            names = names.astype(int) - 1
+            rho = density(names, xyz, Ls, rd, rc=1.0)
+            xyz = add_images(xyz, Ls, u)
+            Pi = pressure_vec(names, xyz, rho, coeffsA, coeffsB, \
+                    box, u, Nbins, rd, rc=1.0)
+            gammai = simps(Pi[:, u] - (Pi[:, up[0]] + Pi[:, up[1]]) / 2.0, us)
+            gamma += gammai / Nf
+            P += Pi / Nf
+            print("Gamma:", gammai)
+        tf = time.time()
+        print("Time: %.2f s." % (tf - ti))
+      
+        Pt = P[:, u] - (P[:, up[0]] + P[:, up[1]]) / 2.0
+        np.savetxt("pressure.out", np.c_[us, Pt])
+        print("Surface tension:", gamma)
 
-#    print(P)
-    Pt = P[:, u] - (P[:, up[0]] + P[:, up[1]]) / 2.0
-    np.savetxt("pressure.out", np.c_[us, Pt])
-    print("Surface tension:", gamma)
+    if args["kb"]:
+        ti = time.time()
+        for frame in frames:
+            print("Computing frame %s... " % frame, end="")
+            names, xyz = read_xyzfile2(frame)
+            names = names.astype(int) - 1
+            rho = density(names, xyz, Ls, rd, rc=1.0)
+            gammai = surf_tension_kb(names, xyz, rho, coeffsA, coeffsB, \
+                    box, u, Nbins, rd, rc=1.0)
+            gamma += gammai / Nf
+            print("Gamma:", gammai)
+        tf = time.time()
+        print("Time: %.2f s." % (tf - ti))
+      
+        print("Surface tension:", gamma)
 
 
