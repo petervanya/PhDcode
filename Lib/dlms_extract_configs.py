@@ -54,11 +54,15 @@ nafion = "--nafion" if args["--nafion"] else ""
 
 Nhf = get_timesteps()
 Nc = get_cores()
-print("Cores: %i | Total number of frames: %i | Requested frames: %i" % \
+print("Cores: %i | Total num. frames: %i | Requested frames: %i" % \
       (Nc, Nhf, Nf))
             
 if not os.path.exists("Dump"):
     os.makedirs("Dump")
+if not os.path.exists("Dump_vel"):
+    os.makedirs("Dump_vel")
+if not os.path.exists("Dump_for"):
+    os.makedirs("Dump_for")
 
 hist_path = "~/sw/bin" if not args["--histpath"] else args["--histpath"]
 
@@ -73,9 +77,15 @@ ti = time.time()
 for i in range(Nhf-Nf+1, Nhf+1):
     cmd = "%s %i %i %i" % (history_exe, Nc, levcfg, i)
     subprocess.call(cmd, shell=True)
+
     cmd = "%s CONFIG.out %s %s" % (config2xyz, shift, nafion)
     subprocess.call(cmd, shell=True)
-    subprocess.call("mv CONFIG.xyz Dump/dump_%03i.xyz" % i, shell=True)
+
+    os.rename("CONFIG.xyz", "Dump/dump_%04i.xyz" % i)
+    if os.path.isfile("CONFIG.vel"):
+        os.rename("CONFIG.vel",  "Dump_vel/dump_%03i.vel" % i)
+    if os.path.isfile("CONFIG.for"):
+        os.rename("CONFIG.for",  "Dump_for/dump_%03i.for" % i)
 tf = time.time()
 print("Total time: %.2f s." % (tf - ti))
 
