@@ -23,9 +23,9 @@ pv278@cam.ac.uk, 28/10/16
 """
 import numpy as np
 from lmp_lib import save_xyzfile
-from dlms_lib import save_config, inter2str_mdpd, species2str2, gen_control
-from docopt import docopt
+from dlms_lib import save_config, inter2str_mdpd, species2str, gen_control
 import sys
+from docopt import docopt
 
 
 if __name__ == "__main__":
@@ -61,7 +61,7 @@ if __name__ == "__main__":
     a_ij = {}
     a_ij["A A"] = [A, B, 0.0, 0.0, 0.0, rc, gamma]
     field_string = "bla\n\n" +\
-                   species2str2({"A": N}) +\
+                   species2str({"A": N}) +\
                    inter2str_mdpd(a_ij) +\
                    "close\n"
     open("FIELD", "w").write(field_string)
