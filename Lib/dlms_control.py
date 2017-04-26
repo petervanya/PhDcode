@@ -2,7 +2,7 @@
 """Usage:
     dlms_control.py [--L <L> --dt <dt> --steps <n> --startstep <st>]
                     [--thermo <th> --halo <h> --eq <Neq>]
-                    [--mdpd <rd>]
+                    [--mdpd <rd> --densvar <dv>]
 
 Generate DL_MESO control file.
 
@@ -12,9 +12,10 @@ Options:
     --steps <n>        Number of simulation steps [default: 10000]
     --startstep <st>   Start timestep for dumping frames [default: 0]
     --eq <Neq>         Equilibration steps [default: 0]
-    --thermo <th>      Print every [default: 100]
+    --thermo <th>      Print every, or save frames every [default: 100]
     --halo <h>         Boundary halo, like neighbor [default: 2.5]
     --mdpd <rd>        Manybody cutoff
+    --densvar <dv>     Density variation
 
 pv278@cam.ac.uk, 06/06/16
 """
@@ -45,13 +46,16 @@ s += "temperature 1.0\n"
 s += "cutoff 1.0\n"
 if args["--mdpd"]:
     s += "manybody cutoff %s\n" % args["--mdpd"]
-s += "boundary halo %.1f\n\n" % halo
+s += "boundary halo %.1f\n" % halo
+if args["--densvar"]:
+    s += "densvar %i\n" % int(args["--densvar"])
+s += "\n"
 
 s += "timestep %.3f\n" % dt
 s += "steps %i\n" % N
 s += "equilibration steps %i\n" % eqsteps
 s += "scale temperature every 10\n"
-s += "trajectory %i 100\n" % startstep
+s += "trajectory %i %i\n" % (startstep, thermo)
 s += "stats every 100\n"
 s += "stack size 100\n"
 s += "print every %i\n\n" % thermo
