@@ -13,7 +13,6 @@ Options:
     --nb <nb>      Number of beads for averaging, or 'all' [default: 1]
     --si           Convert to SI units
     --mb <mb>      Rescale by number of molecules in a bead [default: 6]
-    --cut <rc>     Cutoff to identify PBC crossings [default: 5.0]
     --start <st>   Fraction of frames after which to start fitting a line
                    over rsq vs t [default: 0.666]
 
@@ -22,11 +21,9 @@ pv278@cam.ac.uk, 15/11/16
 import numpy as np
 from math import sqrt
 from scipy.optimize import curve_fit
-import time
-import os, sys, glob
-import matplotlib.pyplot as plt
+import time, os, sys, glob
 from docopt import docopt
-from lmp_lib import read_xyzfile
+from dlms_lib import read_xyzfile
 
 AMU = 1.66e-27
 m0 = 6 * 18 * AMU
@@ -36,23 +33,27 @@ r_DPD = 8.14e-10
 tau_DPD = sqrt(m0 * r_DPD**2 / (kB * T))
 
 
-def diff_xyz(xyz, L, cut=5.0):
-    """Create matrix of differences"""
+def diff_xyz(xyz, L, cut):
+    """Create matrix of differences.
+    * cut: vector of size 3
+    * L: vector of size 3"""
     N, dim = xyz.shape
     d_xyz = np.zeros((N-1, dim))
     for i in range(N-1):
         d_xyz[i] = xyz[i+1] - xyz[i]
 
-    d_xyz[d_xyz > cut] -= L
-    d_xyz[d_xyz < -cut] += L
+#    d_xyz[d_xyz > cut] -= L
+#    d_xyz[d_xyz < -cut] += L
+    d_xyz = d_xyz - (d_xyz > cut) * L
+    d_xyz = d_xyz + (d_xyz < -cut) * L
     return d_xyz
 
 
-def gen_rsq(xyz, L, cut=5.0):
+def gen_rsq(xyz, L, cut):
     """Plot <r^2> vs time averaged over many particles"""
     N = len(xyz)
     rsq = np.zeros((N, 3))
-    d_xyz = diff_xyz(xyz, L, cut=cut)
+    d_xyz = diff_xyz(xyz, L, cut)
     for i in range(1, N):
         rsq[i] = np.sum(d_xyz[0:i], 0)**2
     return rsq
@@ -88,7 +89,13 @@ def parse_control():
     f = open("CONTROL", "r").readlines()
     for line in f:
         if "volume" in line:
-            L = float(line.split()[1])**(1. / 3)
+#            L = float(line.split()[1])**(1. / 3)
+            tmp = line.split()
+            if len(tmp) == 2:
+                L = float(tmp[-1])**(1/3)
+                L = np.array([L, L, L])
+            elif len(tmp) == 4:
+                L = np.array(list(map(float, tmp[1:4])))
         if "timestep" in line:
             dt = float(line.split()[1])
         if "trajectory" in line:
@@ -105,7 +112,6 @@ if __name__ == "__main__":
     bt = int(args["--bt"])
     dt, freq, L = parse_control()
     tau = dt * freq
-    cut = float(args["--cut"])
     Mb = int(args["--mb"])    # molecules per bead
     Nbf = check_beadtypes(bt, frames[0])
     Nb = args["--nb"]
@@ -120,7 +126,7 @@ if __name__ == "__main__":
     print("Frames: %i | dt: %.3f | steps/frame: %i" % (Nf, dt, freq))
     print("Bead type: %i | Number of beads: %i | Molecules/bead: %i" % \
             (bt, Nb, Mb))
-    print("PBC cutoff: %.2f" % cut)
+    print("Box size: %s" % L)
 
     # Reading frames
     xyzs = np.zeros((Nb, 3, Nf))   # (beads, 3, frames)
@@ -136,7 +142,7 @@ if __name__ == "__main__":
     # Calculating distances
     ti = time.time()
     for i in range(Nb):
-        Rsq += gen_rsq(xyzs[i, :, :].T, L) / Nb
+        Rsq += gen_rsq(xyzs[i, :, :].T, L, L/2) / Nb
     tf = time.time()
     print("Time: %.2f s." % (tf - ti))
 
