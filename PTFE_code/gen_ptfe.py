@@ -249,6 +249,7 @@ if __name__ == "__main__":
         sys.exit("Choose method 1, 2 or 3.")
     gamma = data["gamma"] 
     r0 = data["equilibrium-dist"]
+    k0 = data["bond-coeff"]
     L = data["box-size"]
     lmbda = data["water-uptake"]
     if lmbda < 3:

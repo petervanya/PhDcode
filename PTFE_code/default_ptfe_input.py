@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 """Usage:
     default_ptfe_input.py bulk [--seed <s> --L <L> --lmbda <l> --gamma <g>]
-                   [--method <m> --r <r>]
+                   [--method <m> --r <r> --k0 <k0>]
     default_ptfe_input.py slab [--width <w> --el <el> --rpt <rpt> --r <r>]
-                   [--seed <s> --L <L> --lmbda <l> --gamma <g> --method <m>]
+                   [--seed <s> --L <L> --lmbda <l> --gamma <g> --method <m> --k0 <k0>]
                           
 
 Generate input.yaml file that will serve to generate
@@ -20,6 +20,7 @@ Options:
     --rpt <rpt>    Ratio of width of Pt segment on electrode [default: 0]
     --method <m>   Use either 25 (1) or 6*25 (2) as repulsion [default: 2]
     --r <r>        Polymerisation of Nafion chain [default: 15]
+    --k0 <k0>      Bond coefficient [default: 4.0]
 
 pv278@cam.ac.uk, 16/06/16
 """
@@ -99,7 +100,7 @@ mono_beads = "AAABC"
 Nmc = int(args["--r"])
 lmbda = int(args["--lmbda"])
 gamma = float(args["--gamma"])
-k0 = 4.0
+k0 = float(args["--k0"])
 r0 = 0.1
 elmat = args["--el"].lower()
 w = float(args["--width"])
@@ -147,7 +148,7 @@ for k, v in yaml.load(chi[elmat]).items():
     s += "    %s: %.2f\n" % (k, v)
 
 s += "\n"
-s += "bond-coeffs:\n    A A: %.1f\n\n" % k0
+s += "bond-coeff:        %.1f\n" % k0
 s += "equilibrium-dist:  %.1f\n\n" % r0
 
 if args["slab"]:
