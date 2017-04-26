@@ -124,7 +124,7 @@ if __name__ == "__main__":
 
     if args["2d"]:
         D = float(args["--d"])
-        H = float(args["--t"])
+        H = float(args["--h"])
         if D < 0.0 or D > 1.0 or H < 0.0 or H > 1.0:
             sys.exit("Choose depth between 0 and 1.")
         print("2D profile | Plane: %s | Depth: %.1f | Thickness: %.1f") % \
