@@ -44,7 +44,7 @@ ax = plt.axes()
 plt.spy(B)
 ax.get_xaxis().set_visible(False)
 ax.get_yaxis().set_visible(False)
-plt.title("$d = %i \\rm{nm}, \lambda = %i$" % (d, l))
+plt.title("$d = %i \,\,\\rm{nm}, \quad \lambda = %i$" % (d, l))
 if args["--bulk"]:
     plt.title("Bulk")
 
