@@ -50,8 +50,12 @@ plt.ylabel("Density", fontsize=20)
 plt.xlim([0.5, L - 0.5])
 plt.ylim([0, 2.5])
 
-ext = ".pdf" if args["--pdf"] else ".png"
 confname = ""
+ext = ".png"
+if args["--pdf"]:
+    ext = ".pdf"
+    plt.rc('text', usetex=True)
+    plt.rc('font', family='serif')
 
 # setting ylimits and title
 if args["--parse_title"]:
