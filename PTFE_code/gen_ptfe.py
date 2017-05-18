@@ -131,16 +131,16 @@ def gen_el_support(Nsup, L, Lcl, Lpt):
     """Generate electrode support on both sides of the membrane,
     squeeze into Lsup in z-dir and shift by Lpt in z-dir.
     Return (Nsup, 3) xyz matrix
-    Nsup: number of electrode beads"""
+    Nsup: even number of electrode beads"""
     Lsup = L - Lpt
     if Nsup == 0:
         return np.empty((0, 3), dtype=float)
-    xyz1 = np.random.rand(Nsup/2, 3)
+    xyz1 = np.random.rand(Nsup // 2, 3)
     xyz1[:, 0] *= Lcl
     xyz1[:, 1] *= Lsup
     xyz1[:, 1] += Lpt
     xyz1[:, 2] *= L
-    xyz2 = np.random.rand(Nsup/2, 3)
+    xyz2 = np.random.rand(Nsup // 2, 3)
     xyz2[:, 0] *= Lcl
     xyz2[:, 0] += L - Lcl
     xyz2[:, 1] *= Lsup

@@ -18,7 +18,10 @@ from docopt import docopt
 
 args = docopt(__doc__)
 fname = args["<fname>"]
-A = np.loadtxt(fname)
+try:
+    A = np.loadtxt(fname)
+except FileNotFoundError:
+    sys.exit("File %s not found." % fname)
 cm = args["--cmap"]
 
 print("Plotting density profile, colormap: %s" % cm)
