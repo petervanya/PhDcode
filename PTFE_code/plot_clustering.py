@@ -49,6 +49,8 @@ if args["--bulk"]:
     plt.title("Bulk")
 
 figname = "clustering_d%i_l%i" % (d, l) + ext
+if args["--bulk"]:
+    figname = "clustering_l%i" % (l,) + ext
 plt.savefig(figname, bbox_inches="tight")
 print("Plot saved in %s." % figname)
 
