@@ -49,14 +49,14 @@ def create_1d_profile(dumpfiles, axis, subst, bins):
             beadsW = A[A[:, 0] == 4][:, 1:]   # bead W, 6 H2O molecules
             profileC, bins = np.histogram(beadsC[:, axis], bins=bins)
             profileW, bins = np.histogram(beadsW[:, axis], bins=bins)
-            res += 3 * profileC / float(Nfiles)
-            res += 6 * profileW / float(Nfiles)
+            res += 0.5 * profileC / float(Nfiles)
+            res += 1.0 * profileW / float(Nfiles)
     elif subst == "sulfonic":
         for dumpfile in dumpfiles:
             A = read_outfile(dumpfile)
             beads = A[A[:, 0] == 3][:, 1:]
             profile, bins = np.histogram(beads[:, axis], bins=bins)
-            res += profile / float(Nfiles)
+            res += 0.25 * profile / float(Nfiles)
     elif subst == "backbone":
         for dumpfile in dumpfiles:
             A = read_outfile(dumpfile)
@@ -66,9 +66,9 @@ def create_1d_profile(dumpfiles, axis, subst, bins):
             profile1, bins = np.histogram(beads1[:, axis], bins=bins)
             profile2, bins = np.histogram(beads2[:, axis], bins=bins)
             profile3, bins = np.histogram(beads3[:, axis], bins=bins)
-            res += 6 * profile1 / float(Nfiles)
-            res += 5 * profile2 / float(Nfiles)
-            res += profile3 / float(Nfiles)
+            res += 1.0 * profile1 / float(Nfiles)
+            res += 1.0 * profile2 / float(Nfiles)
+            res += 0.25 * profile3 / float(Nfiles)
     elif subst == "el":
         for dumpfile in dumpfiles:
             A = read_outfile(dumpfile)
@@ -97,8 +97,8 @@ def create_2d_profile(dumpfiles, plane, nbins, D, H):
                 beads3[:, plane[1]], bins=nbins)
         profile4, _, _ = np.histogram2d(beads4[:, plane[0]], \
                 beads4[:, plane[1]], bins=nbins)
-        res += 3 * profile3 / float(Nf)
-        res += 6 * profile4 / float(Nf)
+        res += 0.5 * profile3 / float(Nf)
+        res += 1.0 * profile4 / float(Nf)
     return res
 
 
@@ -129,13 +129,15 @@ if __name__ == "__main__":
         axis = axes[axis]
         bins = np.linspace(0, L, nbins+1)
         r = bins[:-1] + np.diff(bins)/2.0
+        dr = bins[1] - bins[0]
 
         ti = time.time()
         profile, bins = create_1d_profile(dumpfiles, axis, subst, bins)
+        profile /= (dr * L**2)
         tf = time.time()
 
-        outname = "profile_1d_%s_%if.out" % (subst_map[subst], Nf)
-        np.savetxt(outname, np.vstack((r, profile)).T)
+        outname = "profile_1d_%s.out" % subst_map[subst]
+        np.savetxt(outname, np.c_[r, profile])
         print("Done. Time: %.2f s." % (tf - ti))
         print("Array saved in %s." % outname)
 
@@ -159,7 +161,7 @@ if __name__ == "__main__":
 
         plt.imshow(profile, cmap="spectral")
         plt.axis("off")
-        plotname = "profile_2d_%s_%if.png" % (args["<plane>"], Nf)
+        plotname = "profile_2d_%s.png" % (args["<plane>"],)
         plt.savefig(plotname)
         print("Plot saved in %s.", plotname)
 
