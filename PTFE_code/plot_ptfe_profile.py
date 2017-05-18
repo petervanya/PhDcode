@@ -39,32 +39,31 @@ if args["--slab"]:
 
 A = np.loadtxt(fileB)
 A[:, 0] *= r_DPD * 1e9   # convert to nm
-A[:, 1] /= sum(A[:, 1])
 plt.plot(A[:, 0], A[:, 1], "red", label="backbone", linewidth=2)
 
 A = np.loadtxt(fileW)
 A[:, 0] *= r_DPD * 1e9
-A[:, 1] /= sum(A[:, 1])
 plt.plot(A[:, 0], A[:, 1], "blue", label="water", linewidth=4)
 
 plt.xlabel("$x$ (nm)", fontsize=20)
-plt.xlim([0.5, np.max(A[:, 0]) - 0.5])
+plt.ylabel("Density", fontsize=20)
+plt.xlim([0.5, L - 0.5])
+plt.ylim([0, 2.5])
+
+ext = ".pdf" if args["--pdf"] else ".png"
+confname = ""
 
 # setting ylimits and title
 if args["--parse_title"]:
-    print("Setting title and y limits from file name.")
     raw = fileW.rstrip(".out").split("_")
-    d = float(raw[-2].rstrip("d"))
-    l = float(raw[-1].rstrip("l"))
-    if l == 6:
-        plt.ylim([0, 0.08])
-    if l == 9:
-        plt.ylim([0, 0.05])
-    if l == 12:
-        plt.ylim([0, 0.03])
-    plt.title("$d = $i \\rm{nm}, \lambda = %i$" % (d, l))
+    print("Parsing filename:", raw)
+    d = float(raw[-2].lstrip("d"))
+    l = float(raw[-1].lstrip("l"))
+    plt.title("$d = %i \\rm{nm}, \lambda = %i$" % (d, l))
+    confname = "_d%i_l%i" % (d, l)
 
-imgname = "profile_1d.pdf" if args["--pdf"] else "profile_1d.png"
+imgname = "profile_1d" + confname + ext
+#imgname = "profile_1d.pdf" if args["--pdf"] else "profile_1d.png"
 plt.savefig(imgname, bbox_inches='tight')
 print("Plot saved in", imgname)
 
