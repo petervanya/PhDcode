@@ -109,7 +109,6 @@ if __name__ == "__main__":
     df.to_csv(dfname, delim=",")
     print("Dataframe saved in %s." % dfname)
 
-
     if args["--sparse"]:
         lmbdas = [6, 9, 12, 16]
     else:
