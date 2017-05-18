@@ -162,7 +162,7 @@ if __name__ == "__main__":
     if os.path.isfile(frame):
         A = ll.read_xyzfile(frame)
     else:
-        print("File %s not found." % frame)
+        sys.exit("File %s not found." % frame)
     if len(A) > 1000:   # THINK THIS THROUGH
         L = guess_box_size(A)
     else:
