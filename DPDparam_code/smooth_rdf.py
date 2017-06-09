@@ -24,7 +24,7 @@ if __name__ == "__main__":
     try:
         A = np.loadtxt(fname)
     except FileNotFoundError:
-        sys.exit("File %s not found.")
+        sys.exit("File %s not found." % fname)
     r, rdf = A[:, 0], A[:, 1]
     y = savgol_filter(rdf, w, o)
 
