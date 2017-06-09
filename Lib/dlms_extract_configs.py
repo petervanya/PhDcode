@@ -54,8 +54,8 @@ nafion = "--nafion" if args["--nafion"] else ""
 
 Nhf = get_timesteps()
 Nc = get_cores()
-print("Cores: %i | Total num. frames: %i | Requested frames: %i" % \
-      (Nc, Nhf, Nf))
+print("Cores: %i | Total num. frames: %i | Requested frames: %i | \
+Levcfg: %i" % (Nc, Nhf, Nf, levcfg))
             
 if not os.path.exists("Dump"):
     os.makedirs("Dump")
@@ -81,7 +81,10 @@ for i in range(Nhf-Nf+1, Nhf+1):
     cmd = "%s CONFIG.out %s %s" % (config2xyz, shift, nafion)
     subprocess.call(cmd, shell=True)
 
+    if not os.path.isfile("CONFIG.xyz"):
+        sys.exit("ERROR: CONFIG.xyz not found.")
     os.rename("CONFIG.xyz", "Dump/dump_%04i.xyz" % i)
+
     if os.path.isfile("CONFIG.vel"):
         os.rename("CONFIG.vel",  "Dump_vel/dump_%03i.vel" % i)
     if os.path.isfile("CONFIG.for"):
