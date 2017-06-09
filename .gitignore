@@ -10,6 +10,5 @@ Lib/Fcore/*.so
 */__pycache__
 */*.pyc
 */*.xyz
-*/*.out
 */input.yaml
 Lib/Extern
