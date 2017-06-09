@@ -1,4 +1,4 @@
-F2PY = f2py3
+F2PY = f2py
 
 
 all: f_rdf mat_ops
