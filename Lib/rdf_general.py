@@ -44,12 +44,12 @@ def rdf_1type(frames, sp):
     * sp: system params, containing:
         * atom_type: integer
         * rc: cutoff for atom neighbourhood
-        * cell: (3, 3) matrix
+        * box: (3, 3) matrix
         * bins: vector
         * bc: Bulgarian const to guess the distance vector size
     """
     rdf = np.zeros(len(sp.bins)-1)
-    L = sp.cell[0, 0]
+    L = sp.box[0, 0]
     r = sp.bins[:-1] + np.diff(sp.bins)/2.0
     dr = r[1] - r[0]
 
@@ -67,10 +67,10 @@ def rdf_1type(frames, sp):
             nn = int(2* N1**2 * (sp.rc/L)**3 * sp.bc)  # guess dist vec size
             if sp.verbose:
                 print("Guessed dist. vec. size: %i | BG: %.2f" % (nn, sp.bc))
-            dist_vec = f_rdf.dist_vec_cut(xyz, sp.rc, L, sp.cell, nn)
+            dist_vec = f_rdf.dist_vec_cut(xyz, sp.rc, L, sp.box, nn)
             dist_vec = dist_vec[dist_vec != 0.0]
         else:
-            dist_vec = f_rdf.dist_vec(xyz, sp.cell)
+            dist_vec = f_rdf.dist_vec(xyz, sp.box)
 
         rdf_raw, _ = np.histogram(dist_vec, sp.bins)
         rdf += rdf_raw / (4 * pi * r**2 * dr) * L**3 / norm
@@ -85,7 +85,7 @@ def rdf_2types(frames, sp):
     for one particle type.
     Similar to rdf_1type."""
     rdf = np.zeros(len(bins)-1)
-    L = sp.cell[0, 0]
+    L = sp.box[0, 0]
     r = sp.bins[:-1] + np.diff(sp.bins)/2.0
     dr = r[1] - r[0]
     A = read_xyzfile(frames[0])
@@ -103,10 +103,10 @@ def rdf_2types(frames, sp):
         if sp.use_cutoff:
             nn = int(2*max(N1, N2)**2 * (sp.rc/L)**3 * sp.bc)
             print("Guessed distance vector size: %i | BG: %.2f" % (nn, sp.bc))
-            dist_vec = f_rdf.dist_vec_cut_2mat(xyz1, xyz2, sp.rc, L, sp.cell, nn)
+            dist_vec = f_rdf.dist_vec_cut_2mat(xyz1, xyz2, sp.rc, L, sp.box, nn)
             dist_vec = dist_vec[dist_vec != 0.0]
         else:
-            dist_vec = f_rdf.dist_vec_2mat(xyz1, xyz2, cell)
+            dist_vec = f_rdf.dist_vec_2mat(xyz1, xyz2, box)
 
         rdf_raw, _ = np.histogram(dist_vec, sp.bins)
         rdf += rdf_raw /(4 * pi * r**2 * dr) * L**3 / norm
@@ -156,7 +156,7 @@ if __name__ == "__main__":
     if args["--rc"]:
         rc = float(args["--rc"])
         use_cutoff = True
-    bins = np.linspace(0, Ls[0] / 2, Nbins+1)
+    bins = np.linspace(0, np.min(Ls) / 2, Nbins+1)
     dr = bins[1] - bins[0]
     r = dr / 2 + bins[:-1]
     
@@ -167,8 +167,8 @@ if __name__ == "__main__":
     if not set(atom_types).issubset(xyz_types):
         sys.exit("Requested atom types not present in the xyz files.")
 
-    cell = np.diag(Ls)
-    sp = mydict(N=N, Nf=Nf, cell=cell, bins=bins, atom_types=atom_types, \
+    box = np.diag(Ls)
+    sp = mydict(N=N, Nf=Nf, box=box, bins=bins, atom_types=atom_types, \
                 bc=1.3, rc=rc, use_cutoff=use_cutoff, \
                 verbose=args["--verbose"])
     
