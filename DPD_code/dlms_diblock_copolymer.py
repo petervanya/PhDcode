@@ -23,14 +23,14 @@ from dlms_lib import save_config, inter2str, species2str, mol2str
 from docopt import docopt
 
 
-def grow_polymer(L, f, N, Nc, mu=1.0, sigma=0.1):
+def grow_polymer(L, f, N, Nc, mu=1.0):
     """Generate coordinates of matrix polymer chains (taken from gen_pmma.py)
     return (N*Nc, 3) xyz matrix
     Input:
     * L: cubic box size
     * N: polymerisation
     * Nc: number of chains"""
-    xyz = np.zeros((Nc*N, 3))
+    xyz = np.zeros((Nc * N, 3))
     for i in range(Nc):
         xyz[i*N : (i+1)*N] = grow_one_chain(L, N, mu=mu)
     return xyz
@@ -52,7 +52,7 @@ def grow_one_chain(L, N, mu=1.0):
 def gen_bonds(N):
     """Return (N, 2) matrix, columns: [atom1, atom2]
     * N: polymerisation"""
-    return np.vstack((np.arange(1, N), np.arange(2, N+1))).T
+    return np.c_[np.arange(1, N), np.arange(2, N+1)]
 
 
 if __name__ == "__main__":
@@ -62,6 +62,7 @@ if __name__ == "__main__":
     rho = float(args["--rho"])
     aii = float(args["--aii"])
     da = float(args["--da"])
+    np.random.seed(1234)
     s = args["--L"].split()
     if len(s) == 1:
         L = float(s[0]) * np.ones(3)
