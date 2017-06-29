@@ -13,7 +13,7 @@ Options:
 pv278@cam.ac.uk, 29/06/16
 """
 import numpy as np
-from math import *
+from math import sin, cos, acos, pi
 from docopt import docopt
 import lmp_lib as ll
 
@@ -38,12 +38,12 @@ def grow_polymer(L, f, N, Nc, mu=1.0):
 def grow_one_chain(L, n, Nc, mu=1.0):
     """Return (n, 3) xyz matrix of one chain (taken from gen_pmma.py)"""
     xyz = np.zeros((n, 3))
-    xyz[0] = np.random.rand(3)*L
+    xyz[0] = np.random.rand(3) * L
     for i in range(1, n):
         th = acos(1 - 2 * np.random.rand())
         phi = 2 * pi * np.random.rand()
-        new_pos = [mu * cos(th), mu * sin(th) * cos(phi), \
-                mu * sin(th) * sin(phi)]
+        new_pos = [mu * sin(th) * cos(phi), mu * sin(th) * sin(phi), \
+                mu * cos(th)]
         xyz[i] = xyz[i-1] + new_pos
     return xyz
 
