@@ -50,6 +50,7 @@ def rdf_1type(frames, sp):
     """
     rdf = np.zeros(len(sp.bins)-1)
     L = sp.box[0, 0]
+    V = np.prod(np.diag(sp.box))
     r = sp.bins[:-1] + np.diff(sp.bins)/2.0
     dr = r[1] - r[0]
 
@@ -73,7 +74,7 @@ def rdf_1type(frames, sp):
             dist_vec = f_rdf.dist_vec(xyz, sp.box)
 
         rdf_raw, _ = np.histogram(dist_vec, sp.bins)
-        rdf += rdf_raw / (4 * pi * r**2 * dr) * L**3 / norm
+        rdf += rdf_raw / (4 * pi * r**2 * dr) * V / norm
         if sp.verbose: print("Done: %s" % frame)
     return rdf / sp.Nf
 
@@ -86,6 +87,7 @@ def rdf_2types(frames, sp):
     Similar to rdf_1type."""
     rdf = np.zeros(len(bins)-1)
     L = sp.box[0, 0]
+    V = np.prod(np.diag(sp.box))
     r = sp.bins[:-1] + np.diff(sp.bins)/2.0
     dr = r[1] - r[0]
     A = read_xyzfile(frames[0])
@@ -109,7 +111,7 @@ def rdf_2types(frames, sp):
             dist_vec = f_rdf.dist_vec_2mat(xyz1, xyz2, box)
 
         rdf_raw, _ = np.histogram(dist_vec, sp.bins)
-        rdf += rdf_raw /(4 * pi * r**2 * dr) * L**3 / norm
+        rdf += rdf_raw /(4 * pi * r**2 * dr) * V / norm
         if sp.verbose: print("Done: %s" % frame)
     return rdf / sp.Nf
 
