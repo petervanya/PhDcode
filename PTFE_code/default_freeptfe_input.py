@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 """Usage:
     default_ptfe_input.py [--we <we> --wf <wf> --el <el> --rpt <rpt>]
-                   [--seed <s> --L <L> --lmbda <l> --gamma <g> --method <m>]
+                          [--seed <s> --L <L> --lmbda <l> --gamma <g>]
+                          [--A <A> --B <B>]
                           
 
 Generate input.yaml file that will serve to generate
@@ -17,9 +18,10 @@ Options:
     --we <we>      Electrode width in nm [default: 10]
     --wf <wf>      Nafion film width in nm [default: 10]
     --rpt <rpt>    Ratio of width of Pt segment on electrode [default: 0]
-    --method <m>   Use either 25 (1) or 6*25 (2) as repulsion [default: 1]
+    --A <A>        MDPD repulsion [default: -50]
+    --B <B>        MDPD attraction [default: 50]
 
-pv278@cam.ac.uk, 31/01/16
+pv278@cam.ac.uk, 31/01/17, modified 28/07/17
 """
 import yaml
 import sys
@@ -103,7 +105,9 @@ elmat = args["--el"].lower()
 we = float(args["--we"])
 wf = float(args["--wf"])
 rPt = float(args["--rpt"])
-method = int(args["--method"])
+A_def = float(args["--A"])
+B_def = float(args["--B"])
+rho = 3.1 - 1.121 * A_def * (B_def - 1.136)**(-0.852)
 
 if elmat not in ["carbon", "silica", "quartz"]:
     sys.exit("ERROR. Choose from these electrodes: carbon, silica, quartz.")
@@ -123,23 +127,19 @@ s = """# Input file for free space simulations.
 # * A, B, C
 # * W: water bead: 6 H2O\n"""
 s += "# * E: electrodes from %s\n" % elmat
-s += "# * P: platinum"
-s += """
-# ===== Method:
-# * 1: a_DPD = 25 = (16 - 1) / 0.2 / 3
-# * 2: a_DPD = 158 = (6*16 - 1) / 0.2 / 3
-# * 3: a_DPD sim N^(2/3), from Fuchslin, JCP, 2009
-\n"""
+s += "# * P: platinum\n"
 
 s += "seed:              %i\n" % seed
-s += "method:            %i\n" % method
+s += "A:                 %.2f       # interaction param\n" % A_def
+s += "B:                 %.2f       # interaction param\n" % B_def
+s += "density:           %.2f       # calculated from A, B\n" % rho
 
-s += "box-size:          %.0f        # DPD units, 1 = 8.14 AA\n" % L
-s += "temperature:       %.1f       # Units of kB T\n" % T
+s += "box-size:          %.0f        # DPD units\n" % L
+s += "temperature:       %.1f       # Units of kT\n" % T
 s += "polymerisation:    %i\n" % Nmc
 s += "mono-beads:        %s\n" % mono_beads
 s += "water-uptake:      %i         # number of H2O/SO3H\n" % lmbda
-s += "gamma:             %.1f       # DPD drag coefficient\n" % gamma
+s += "gamma:             %.1f       # DPD friction\n" % gamma
 
 s += "chi-params:\n"
 for k, v in yaml.load(chi[elmat]).items():
