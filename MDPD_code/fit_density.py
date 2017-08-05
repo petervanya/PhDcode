@@ -37,6 +37,8 @@ popt, pcov = curve_fit(func, x, rho, p0=guess)
 print("===== Fitting the MDPD density profile with tanh =====")
 print("Params: %s" % popt)
 print("Fitted density: %.3f" % (popt[0] + popt[4]))
+print("Interface slope: %.3f" % popt[1])
+print("Interface width: %.3f" % (1.0 / popt[1]))
 
 if args["--plot"]:
     import matplotlib.pyplot as plt
