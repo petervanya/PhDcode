@@ -21,7 +21,7 @@ import dlms_lib as dlms
 
 NA = 6.022e23
 AMU = 1.66e-27
-rho_DPD = 3.0
+#rho_DPD = 3.0
 #a_DPD = 25.0
 rc = 8.14e-10               # DPD distance unit
 k0 = 4.0
@@ -31,7 +31,7 @@ elem_wts = {"C": 12.01, "O": 15.99, "Si": 28.08}
 m0 = 6 * 18 * AMU
 kT = 300.0 * 1.381e-23
 tau = np.sqrt(m0 * rc**2 / kT)
-chi2da = 0.606  # 3.27
+chi2da = 0.606  # 3.27, from Ghoufi, JCTC, 2012
 
 
 def set_electrodes(data):
@@ -61,6 +61,7 @@ def set_electrodes(data):
     print("El. width: %.2f | Film width: %.2f | Material: %s" % \
             (Lcl, Ltf, elmat))
 
+    rho_DPD = data["density"]
     Nelb = int(rho_DPD * int(Vcl))
     Nsup = int((1 - Pt_ratio) * Nelb)  # support beads
     Npt = int(Pt_ratio * Nelb)         # platinum beads
@@ -155,8 +156,7 @@ def gen_platinum(Npt, L, Lcl, Lpt):
     xyz2[:, 0] += L - Lcl
     xyz2[:, 1] *= Lpt
     xyz2[:, 2] *= L
-    xyz = np.vstack((xyz1, xyz2))
-    return xyz
+    return np.r_[xyz1, xyz2]
 
 
 def gen_bonds(Nmc, Nc, mono_beads, start=0):
@@ -186,13 +186,8 @@ def gen_bonds_one_chain(Nmc, mono_beads, start=0):
     connected to -2nd bead from previous monomer
     """
     Nbm = len(mono_beads)  # number of beads per monomer
-    mono_bond_block = np.vstack((np.arange(1,Nbm+1), np.arange(0, Nbm))).T
+    mono_bond_block = np.c_[np.arange(1, Nbm+1), np.arange(0, Nbm)]
     mono_bond_block[0, 1] = -2
-#    mono_bond_block = np.array([[1, -2],\
-#                                [2, 1],\
-#                                [3, 2],\
-#                                [4, 3],\
-#                                [5, 4]], dtype=int)
     bond_mat = np.zeros((Nbm*Nmc, 2), dtype=int)
     for i in range(Nmc):
         bond_mat[Nbm*i : Nbm*(i+1)] = mono_bond_block + Nbm*i
@@ -231,17 +226,8 @@ if __name__ == "__main__":
     except IOError:
         sys.exit("Input file not found:", args["<input>"])
     np.random.seed(data["seed"])
-    if data["method"] == 1:
-        a_DPD = -25.0
-        b_DPD = 25.0
-    elif data["method"] == 2:
-        a_DPD = -158.0
-        b_DPD = 158.0
-    elif data["method"] == 3:
-        a_DPD = 6**(2/3) * (-25.0)
-        b_DPD = 6**(2/3) * 25.0
-    else:
-        sys.exit("Choose method 1, 2 or 3.")
+    a_DPD, b_DPD = data["A"], data["B"]
+    rho_DPD = data["density"]
     gamma = data["gamma"] 
     r0 = data["equilibrium-dist"]
     L = data["box-size"]
@@ -250,8 +236,9 @@ if __name__ == "__main__":
         sys.exit("Water uptake should be more than 3.")
 
     print("=== Creating input file for Nafion for DL_MESO ===")
-    print("tau: %.2e | Box size: %.1f | A: %.1f | B: %.1f | lmbda: %.1f" % \
-         (tau, L, a_DPD, b_DPD, lmbda))
+    print("tau: %.2e | Box size: %.1f | lmbda: %.1f" % \
+         (tau, L, lmbda))
+    print("A: %.2f | B: %.2f | density: %.2f" % (a_DPD, b_DPD, rho_DPD))
 
     # ===== setting numbers
     mono_beads = data["mono-beads"]   # AAABC
@@ -273,7 +260,7 @@ if __name__ == "__main__":
     wb_xyz = gen_water_beads(Nw, L, Ltf, Lcl)
     el_xyz = gen_el_support(Nsup, L, Lcl, Lpt)
     pt_xyz = gen_platinum(Npt, L, Lcl, Lpt)
-    xyz = np.vstack((wb_xyz, el_xyz, pt_xyz, poly_xyz))  # careful about order!
+    xyz = np.r_[wb_xyz, el_xyz, pt_xyz, poly_xyz]  # careful about order!
     print("%i beads created, density: %.2f" % (len(xyz), len(xyz)/L**3))
 
     atom_ids_l = ["W"] * Nw + ["E"] * Nsup + ["P"] * Npt + \
