@@ -9,7 +9,7 @@ Arguments:
     <frames>       xyz frames
     <ax>           Axis to profile along ("x", "y", "z")
     <pl>           Plane to profile on ("xy", "yz", "xz")
-    --bt <bt>      Bead type
+    --bt <bt>      Bead type, number of -1 for all
 
 Options:
     --d <d>        Relative depth at which to profile the plane [default: 0.5]
@@ -43,7 +43,10 @@ def create_1d_profile(frames, bt, ax, bins):
     res = np.zeros(len(bins)-1)
     for frame in frames:
         A = read_xyzfile(frame)
-        beads = A[A[:, 0] == bt][:, 1:]
+        if bt == -1:    # choose all beads
+            beads = A[:, 1:]
+        else:
+            beads = A[A[:, 0] == bt][:, 1:]
         profile, _ = np.histogram(beads[:, ax], bins=bins)
         res += profile / Nf
     return res
@@ -88,6 +91,7 @@ if __name__ == "__main__":
     bt = int(args["--bt"])
     xyz = read_xyzfile(frames[0])
     xyz_types = set(xyz[:, 0].astype(int))
+    xyz_types.add(-1)
     if bt not in xyz_types:
         sys.exit("Requested bead type not present in the frames.")
     if args["--L"]:
