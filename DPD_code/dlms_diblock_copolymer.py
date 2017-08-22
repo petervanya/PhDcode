@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 """Usage:
     dlms_diblock_copolymer.py [--N <N> --f <f> --L <L> --rho <rho>]
-                              [--aii <aii> --da <da>]
+                              [--aii <aii> --da <da> --gamma <g>]
 
 Generate diblock copolymer (from A and B particles)
 initial configuration and bonds file.
@@ -13,6 +13,7 @@ Options:
     --rho <rho>    DPD density [default: 3.0]
     --aii <aii>    Default bead repulsion [default: 25]
     --da <da>      Excess repulsion [default: 1]
+    --gamma <g>    Friction [default: 4.5]
 
 pv278@cam.ac.uk, 15/02/16
 """
@@ -62,6 +63,7 @@ if __name__ == "__main__":
     rho = float(args["--rho"])
     aii = float(args["--aii"])
     da = float(args["--da"])
+    gamma = float(args["--gamma"])
     np.random.seed(1234)
     s = args["--L"].split()
     if len(s) == 1:
@@ -83,7 +85,7 @@ if __name__ == "__main__":
     NA = int(f * N)
     NB = int((1 - f) * N)
     
-    rc, gamma = 1.0, 4.5
+    rc = 1.0
     a_ij = {}
     a_ij["A A"] = [aii, rc, gamma]
     a_ij["B B"] = [aii, rc, gamma]
