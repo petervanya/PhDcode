@@ -59,11 +59,13 @@ if __name__ == "__main__":
     if args["--nafion"]:
         print("Nafion bead order 'ABCWEP' used.")
         for i, bt in enumerate("ABCWEP"):
-            names_dict[bt] = i+1
+            names_dict[bt] = i + 1
     else:
         for i in enumerate(sorted(set(names))):   # bead types to numbers
-            names_dict[i[1]] = i[0]+1
-    print("Bead names: %s" % names_dict)
+            names_dict[i[1]] = i[0] + 1
+
+    print("Bead names: %s" % 
+            ["%s: %i" % (k, v) for k, v in sorted(names_dict.items())])
     names = [names_dict[i] for i in names]
 
     xyz = np.array([[float(j) for j in conf_str[i].split()] for i in mask+1])
@@ -74,7 +76,7 @@ if __name__ == "__main__":
                     for i in range(3)])
         xyz += L
         xyz = xyz % L
-        print("Shifted box by", L/2)
+        print("Shifted box by", L / 2)
     if args["--shift-by"]:
         s = args["--shift-by"].split()
         if len(s) == 1:

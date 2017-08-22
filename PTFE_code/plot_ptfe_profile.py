@@ -1,16 +1,20 @@
 #!/usr/bin/env python
 """Usage:
-    plot_ptfe_profile.py <fileW> <fileB> [--boxsize <L> --slab <sl>]
+    plot_ptfe_profile.py <fileW> <fileB> [--boxsize <L> --slab <sl> --rc <rc>]
                          [--pdf --parse_title]
 
 [AD HOC] Plot normalised 1d density profiles of water and PTFE backbone.
 Can add lines denoting slab width.
+Choose lengthscale:
+* Wu: 8.14 AA
+* Yamamoto: 7.1 AA
 
 Options:
     --boxsize <L>   Box size in DPD units [default: 40]
     --slab <sl>     Slab width in nm
     --pdf           Plot as pdf
     --parse_title   Set title from information in file name
+    --rc <rc>       DPD length scale in AA [default: 8.14]
 
 25/02/16
 """
@@ -20,10 +24,10 @@ import matplotlib
 import sys, os
 from docopt import docopt
 
-r_DPD = 8.14e-10
 matplotlib.rcParams.update({'font.size': 24})
 
 args = docopt(__doc__)
+r_DPD = float(args["--rc"]) * 1e-10 #8.14e-10
 fileW, fileB = args["<fileW>"], args["<fileB>"]
 if not os.path.isfile(fileW) or not os.path.isfile(fileB):
     sys.exit("One or two files not found. Input: %s, %s" % (fileW, fileB))

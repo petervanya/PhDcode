@@ -24,15 +24,14 @@ import dlms_lib as dlms
 NA = 6.022e23
 AMU = 1.66e-27
 rho_DPD = 3.0
-#a_DPD = 25.0
-rc = 8.14e-10               # DPD distance unit
+r_DPD = 8.14e-10               # DPD distance unit
 k0 = 4.0
 rho_el = {"carbon": 2000.0, "quartz": 2648.0, "silica": 2196.0}
 rho_Pt = 21450.0
 elem_wts = {"C": 12.01, "O": 15.99, "Si": 28.08}
 m0 = 6 * 18 * AMU
 kT = 300.0 * 1.381e-23
-tau = np.sqrt(m0 * rc**2 / kT)
+tau = np.sqrt(m0 * r_DPD**2 / kT)
 
 
 def set_electrodes(data, L):
@@ -50,27 +49,22 @@ def set_electrodes(data, L):
          Lcl
     """
     Lslab = data["electrodes"]["width"]
-    Lcl = (L - Lslab * 1e-9 / rc) / 2
+    Lcl = (L - Lslab * 1e-9 / r_DPD) / 2
     if Lcl > L/2:
         sys.exit("Electrode layer thicker than membrane.")
 
-#    if Lcl > 1e-5:
     elmat = data["electrodes"]["material"]
     Pt_ratio = data["electrodes"]["Pt-ratio"]
     Lpt = L * Pt_ratio
     Vcl = 2 * Lcl * L**2
     print("Electrodes on | El. width: %.2f | Material: %s" % (Lcl, elmat))
 
-    Nelb = int(rho_DPD * int(Vcl))     # not (4*pi/3*rc**3), must be cubes
+    Nelb = int(rho_DPD * int(Vcl))     # not (4*pi/3*r_DPD**3), must be cubes
     Nsup = int((1 - Pt_ratio) * Nelb)  # support beads
     Npt = int(Pt_ratio * Nelb)         # platinum beads
     if Nsup % 2 != 0: Nsup += 1
     if Npt % 2 != 0: Npt += 1
     print("Electrode beads: %i | Support: %i | Pt: %i" % (Nelb, Nsup, Npt))
-#    else:
-#        print("Electrodes off.")
-#        Lcl, Lpt = 0.0, 0.0
-#        Nsup, Npt = 0, 0
     return Lcl, Lpt, Nsup, Npt
 
 
@@ -97,7 +91,7 @@ def grow_one_chain(Nbm, Nmc, L, Lcl, mu=1.0):
     """Return xyz matrix of one polymer chain.
     Return (Nbc*len(beads_in_m), 3) xyz matrix
     """
-    N = Nbm*Nmc   # beads per chain
+    N = Nbm * Nmc   # beads per chain
     xyz = np.zeros((N, 3))
     xyz[0] = np.random.rand(3) * L
     for i in range(1, N):
@@ -146,7 +140,7 @@ def gen_el_support(Nsup, L, Lcl, Lpt):
     xyz2[:, 1] *= Lsup
     xyz2[:, 1] += Lpt
     xyz2[:, 2] *= L
-    return np.vstack((xyz1, xyz2))
+    return np.r_[xyz1, xyz2]
 
 
 def gen_platinum(Npt, L, Lcl, Lpt):
@@ -166,8 +160,7 @@ def gen_platinum(Npt, L, Lcl, Lpt):
     xyz2[:, 0] += L - Lcl
     xyz2[:, 1] *= Lpt
     xyz2[:, 2] *= L
-    xyz = np.vstack((xyz1, xyz2))
-    return xyz
+    return np.r_[xyz1, xyz2]
 
 
 def gen_bonds(Nmc, Nc, mono_beads, start=0):
@@ -179,7 +172,7 @@ def gen_bonds(Nmc, Nc, mono_beads, start=0):
     Return (Nmc*Nbm*Nc-1, 2) matrix: [bead1, bead2]
     """
     Nbc = Nmc * len(mono_beads)   # beads per chain
-    bond_mat = np.zeros(( (Nbm*Nmc-1)*Nc, 2) )
+    bond_mat = np.zeros(((Nbm*Nmc-1)*Nc, 2))
     Nboc = Nbc - 1                # bonds per chain
     for i in range(Nc):
         bond_mat[Nboc*i : Nboc*(i+1)] =\
@@ -197,7 +190,8 @@ def gen_bonds_one_chain(Nmc, mono_beads, start=0):
     connected to -2nd bead from previous monomer
     """
     Nbm = len(mono_beads)  # number of beads per monomer
-    mono_bond_block = np.vstack((np.arange(1,Nbm+1), np.arange(0, Nbm))).T
+#    mono_bond_block = np.vstack((np.arange(1,Nbm+1), np.arange(0, Nbm))).T
+    mono_bond_bloc = np.c_[np.arange(1, Nbm+1), np.arange(0, Nbm)]
     mono_bond_block[0, 1] = -2
 #    mono_bond_block = np.array([[1, -2],\
 #                                [2, 1],\
@@ -207,7 +201,7 @@ def gen_bonds_one_chain(Nmc, mono_beads, start=0):
     bond_mat = np.zeros((Nbm*Nmc, 2), dtype=int)
     for i in range(Nmc):
         bond_mat[Nbm*i : Nbm*(i+1)] = mono_bond_block + Nbm*i
-    bond_mat += start*np.ones((len(bond_mat), 2), dtype=int)
+    bond_mat += start * np.ones((len(bond_mat), 2), dtype=int)
     return bond_mat[1:]    # reject 1st dummy bond
 
 
@@ -302,7 +296,7 @@ if __name__ == "__main__":
  
         bond_mat = gen_bonds_one_chain(Nmc, mono_beads, start=0)
         print("FIELD: %i bonds in a chain" % len(bond_mat))
-        bead_list = list("AAABC"*Nmc)
+        bead_list = list(mono_beads * Nmc)
         nafion_mol_str = dlms.mol2str("nafion", Nc, bead_list, bond_mat, \
                                       bond_type="harm", k0=k0, r0=r0)
         field_string = "bla\n\n" +\
@@ -351,8 +345,7 @@ if __name__ == "__main__":
 
     if args["--xyz"]:
         fname = "nafion.xyz"
-        xyz = np.hstack((np.matrix(atom_ids_n).T, xyz))
-        ll.save_xyzfile(fname, xyz)
+        ll.save_xyzfile(fname, np.c_[atom_ids_n, xyz])
         print("xyz file saved in", fname)
  
  
