@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 """Usage:
-    vacf_lmp.py <frames> [--bt <bt> --nb <nb> --si --start <st>]
-                         [--freq <f> --dt <dt>]
+    vacf_lmp.py <frames> [--bt <bt> --nb <nb> --si --freq <f> --dt <dt>]
 
 Compute velocity autocorrelation function in LAMMPS.
 Cv(t) = <v(t) . v(0)>
@@ -10,8 +9,6 @@ Options:
     --bt <bt>      Bead type [default: 1]
     --nb <nb>      Number of beads for averaging, or 'all' [default: all]
     --si           Convert to SI units
-    --start <st>   Fraction of frames after which to start fitting a line
-                   over rsq vs t [default: 0.666]
     --dt <dt>      Timestep [default: 0.05]
     --freq <f>     Dump frequency [default: 1]
 
@@ -23,17 +20,9 @@ import sys, glob, time
 from docopt import docopt
 
 
-def read_velfile(outfile):
-    try:
-        A = np.loadtxt(outfile, skiprows=9)
-    except FileNotFoundError:
-        sys.exit("File %s not found." % outfile)
-    return A
-
-
 def check_beadtypes(bt, frame):
     """Check if beadtype present in the xyz frame"""
-    A = read_velfile(frame)
+    A = np.loadtxt(outfile, skiprows=9)
     bts = set(A[:, 0].astype(int))
     Nbf = sum(A[:, 0] == bt)
     if bt not in bts:
@@ -78,8 +67,11 @@ if __name__ == "__main__":
     print("Bead type: %i | Beads: %i" % (bt, Nb))
 
     xyzs = np.zeros((Nb, 3, Nf))   # (beads, dim, frames)
+    ti = time.time()
     for i in range(Nf):
         xyzs[:, :, i] = read_from_top(frames[i], Nb, btype=bt)
+    tf = time.time()
+    print("Time reading frames: %.2f" % (tf - ti))
     Cvv = np.zeros((Nf, 3))
     t = np.arange(0, Nf, 1) * tau
 
