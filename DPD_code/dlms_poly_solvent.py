@@ -17,13 +17,13 @@ Options:
 pv278@cam.ac.uk, 18/11/16, modified 15/02/16
 """
 import numpy as np
-from numpy import pi, cos, sin
+from math import pi, cos, sin, acos
 import sys
 from docopt import docopt
 from dlms_lib import save_config, inter2str, species2str, mol2str
 
 
-def grow_polymer(L, f, r, Nc, mu=0.8):
+def grow_polymer(L, f, r, Nc, mu=1.0):
     """Generate coordinates of matrix polymer chains.
     Return (r * Nc, 3) xyz matrix
     Input:
@@ -34,17 +34,17 @@ def grow_polymer(L, f, r, Nc, mu=0.8):
     * sigma: deviation of bead distance"""
     xyz = np.zeros((Nc*r, 3))
     for i in range(Nc):
-        xyz[i*r : (i+1)*r] = grow_one_chain(L, r, Nc, mu)
+        xyz[i*r : (i+1)*r] = grow_one_chain(L, r, mu)
     return xyz
 
 
-def grow_one_chain(L, r, Nc, mu):
+def grow_one_chain(L, r, mu):
     """Return (n, 3) xyz matrix of one chain"""
     xyz = np.zeros((r, 3))
     xyz[0] = np.random.rand(3) * L
     for i in range(1, r):
-        th = np.random.rand() * pi
-        ph = np.random.rand() * 2 * pi
+        th = acos(1 - 2 * np.random.rand())
+        ph = 2 * pi * np.random.rand()
         r = mu
         xyz[i] = xyz[i-1] + [r*cos(th), r*sin(th)*cos(ph), r*sin(th)*sin(ph)]
     return xyz
@@ -53,7 +53,7 @@ def grow_one_chain(L, r, Nc, mu):
 def gen_bonds(r):
     """Return (r, 2) matrix, columns: [atom1, atom2]
     * r: polymerisation"""
-    return np.vstack((np.arange(1, r), np.arange(2, r+1))).T
+    return np.c_[np.arange(1, r), np.arange(2, r+1)]
 
 
 def save_bonds(fname, bond_mat, k0=4.0, r0=0.1, bond_type="harm"):
@@ -88,12 +88,13 @@ if __name__ == "__main__":
     N = int(rho * np.prod(L)) // 10 * 10     # round to 10
     box = np.diag(L)
     Nc = int(N * f // r)
-    Ns = N - Nc
+    Ns = N - Nc * r
 
     print("===== DPD polymer-solvent mixture =====")
     print("rho: %.1f | Box: %s" % (rho, str(L)))
     print("Fraction of P: %.2f | Num. chains: %i | Polymerisation: %i" % \
             (f, Nc, r))
+    print("Solvent particles: %i" % Ns)
     
     rc, gamma = 1.0, 4.5
     a_ij = {}
