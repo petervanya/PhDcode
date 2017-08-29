@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 """Usage:
-    diffusivity4.py <frames> [--bt <bt> --nb <nb> --si --fit-stop <st>]
+    diffusivity4.py <frames> [--bt <bt> --nb <nb> --si]
+                             [--fit-start <sta> --fit-stop <sto>]
 
 Compute mean square distance and diffusivity in linear (Einstein) regime,
 i.e. early after the start of measurement.
@@ -8,9 +9,10 @@ D = <r^2> / (n t), n = 2 (1d), 4 (2d), 6 (3d)
 
 Options:
     --bt <bt>           Bead type [default: 1]
-    --nb <nb>           Number of beads for averaging, or 'all' [default: 1]
+    --nb <nb>           Number of beads for averaging, or 'all' [default: all]
     --si                Convert to SI units
-    --fit-stop <st>     Fit line from 0 until this time [default: 20]
+    --fit-start <sta>   Time point to start fitting from in tau [default: 0]
+    --fit-stop <sto>    Time point to fit up to in tau [default: 2]
 
 pv278@cam.ac.uk, 26/04/17
 """
@@ -19,6 +21,7 @@ from numba import jit, float64, int64
 import time, os, sys, glob
 from docopt import docopt
 from dlms_lib import read_xyzfile
+
 
 AMU = 1.66e-27
 m0 = 6 * 18 * AMU
@@ -112,16 +115,19 @@ if __name__ == "__main__":
         sys.exit("Nb larger than number of beads in frame (%i)." % Nball)
 
     Rsq = np.zeros((Nf, 3))
-    t = np.arange(0, Nf * delta_t, delta_t)
+    t = np.arange(0, Nf, 1) * delta_t
+    strt = float(args["--fit-start"])
     stop = float(args["--fit-stop"])
     if stop < 0.0 or stop > Nf * delta_t:
-        sys.exit("Enter  between 0 and %.1f." % (Nf * delta_t))
+        sys.exit("Enter fitting stop between 0 and %.1f." % (Nf * delta_t))
+    if strt < 0.0 or strt > stop:
+        sys.exit("Enter fitting start between 0 and stop %.1f." % stop)
 
     print("===== Diffusivity =====")
     print("Frames: %i | dt: %.3f | steps/frame: %i" % (Nf, dt, freq))
     print("Bead type: %i | Number of beads: %i" % (bt, Nb))
-    print("Box size: %s | Time range: %.1f | Fit up to: %.1f" \
-            % (L, Nf * delta_t, stop))
+    print("Box size: %s | Time range: %.1f" % (L, Nf * delta_t))
+    print("Fitting start (tau): %.1f | Fitting stop: %.1f" % (strt, stop))
     if args["--si"]:
         print("SI units | rc: %.2e | tau: %.2e" % (r_DPD, tau_DPD))
 
@@ -148,7 +154,8 @@ if __name__ == "__main__":
     D = np.zeros(3)
     err = np.zeros(3)
     for i in range(3):
-        Cc, Ce = np.polyfit(t[t < stop], Rsq[t < stop, i], 1, cov=True)
+        Cc, Ce = np.polyfit(t[(t >= strt) & (t < stop)], 
+                Rsq[(t >= strt) & (t < stop), i], 1, cov=True)
         D[i] = Cc[0] / 2.0
         err[i] = np.sqrt(np.diag(Ce))[0] / 2.0
     print("\n1d diffusivity  (x,  y,  z):  %.6f  %.6f  %.6f" % tuple(D))
@@ -169,10 +176,12 @@ if __name__ == "__main__":
 
     D, err = np.zeros(3), np.zeros(3)
     for i in range(3):
-        Cc, Ce = np.polyfit(t[t < stop], Rsq_2d[t < stop, i], 1, cov=True)
+        Cc, Ce = np.polyfit(t[(t >= strt) & (t < stop)], 
+                Rsq_2d[(t >= strt) & (t < stop), i], 1, cov=True)
+#        Cc, Ce = np.polyfit(t[t < stop], Rsq_2d[t < stop, i], 1, cov=True)
         D[i] = Cc[0] / 4.0
         err[i] = np.sqrt(np.diag(Ce))[0] / 4.0
-    print("\n2d diffusivity (xy, yz, xz):  %.6f  %.6f  %.6f" % tuple(D))
+    print("2d diffusivity (xy, yz, xz):  %.6f  %.6f  %.6f" % tuple(D))
     print("2d fit error   (xy, yz, xz):  %.6f  %.6f  %.6f" % tuple(err))
     print("2d MSD saved in %s." % outname)
     if args["--si"]:
@@ -183,10 +192,12 @@ if __name__ == "__main__":
     outname = "msd_3d_b%i.out" % bt
     np.savetxt(outname, np.c_[t, Rsq_3d], fmt="%.6e")
 
-    Cc, Ce = np.polyfit(t[t < stop], Rsq_3d[t < stop], 1, cov=True)
+    Cc, Ce = np.polyfit(t[(t >= strt) & (t < stop)], 
+            Rsq_3d[(t >= strt) & (t < stop)], 1, cov=True)
+#    Cc, Ce = np.polyfit(t[t < stop], Rsq_3d[t < stop], 1, cov=True)
     D = Cc[0] / 6.0
     err = np.sqrt(np.diag(Ce))[0] / 6.0
-    print("\n3d diffusivity: %.6f" % D)
+    print("3d diffusivity: %.6f" % D)
     print("3d fit error  : %.6f" % err)
     print("3d MSD saved in %s." % outname)
     if args["--si"]:
