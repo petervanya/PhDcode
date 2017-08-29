@@ -7,6 +7,7 @@ pv278@cam.ac.uk, 17/06/16
 """
 import numpy as np
 import sys
+from collections import OrderedDict
 
 
 # ===== manipulate output
@@ -52,6 +53,7 @@ def species2str(beads):
     Ordering on line: bead type, mass, charge, number, freeze (or not)
     """
     s = "SPECIES %i\n" % len(beads)
+    beads = OrderedDict(sorted(beads.items()))
     for bt, bp in beads.items():
         s += "%s    1.0 0.0 %i" % (bt, bp)
         if bt in ["E", "P"]:   # freeze platinum or electrode beads
@@ -68,6 +70,7 @@ def inter2str(a_ij):
     Method: add mddpd in the future
     """
     s = "INTERACTIONS %i\n" % len(a_ij)
+    a_ij = OrderedDict(sorted(a_ij.items()))
     for k, v in a_ij.items():
         if isinstance(k, tuple):
             s += "%s %s    %s   %.3f  %.1f  %.2f\n" \
