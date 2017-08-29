@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """Usage:
-    vacf.py <frames> [--bt <bt> --nb <nb> --si --mb <mb> --start <st>]
+    vacf_dlms.py <frames> [--bt <bt> --nb <nb> --si --mb <mb>]
 
 Compute velocity autocorrelation function in DL_MESO.
 Cv(t) = <v(t) . v(0)>
@@ -11,33 +11,22 @@ Options:
     --nb <nb>      Number of beads for averaging, or 'all' [default: all]
     --si           Convert to SI units
     --mb <mb>      Rescale by number of molecules in a bead [default: 1]
-    --start <st>   Fraction of frames after which to start fitting a line
-                   over rsq vs t [default: 0.666]
 
 pv278@cam.ac.uk, 12/04/17, modified 22/08/17
 """
 import numpy as np
 from scipy.integrate import simps
-import sys, glob, time
+import os, sys, glob, time
 from docopt import docopt
-from dlms_lib import read_xyzfile
-
-
-AMU = 1.66e-27
-m0 = 6 * 18 * AMU
-kB = 1.381e-23
-T = 300.0
-r_DPD = 8.14e-10
-tau_DPD = np.sqrt(m0 * r_DPD**2 / (kB * T))
+from dlms_lib import read_xyzfile2
 
 
 def check_beadtypes(bt, frame):
     """Check if beadtype present in the xyz frame"""
-    A = read_xyzfile(frame)
-    bts = set(A[:, 0].astype(int))
-    Nbf = sum(A[:, 0] == bt)
-    if bt not in bts:
+    nm, xyz = read_xyzfile2(frame)
+    if bt not in set(nm):
         sys.exit("Bead type %i not found in frame." % bt)
+    Nbf = sum(nm == bt)
     return Nbf
 
 
@@ -100,14 +89,17 @@ if __name__ == "__main__":
     print("Frames: %i | dt: %.3f | steps/frame: %i" % (Nf, dt, freq))
     print("Bead type: %i | Beads: %i | Molecules/bead: %i" % (bt, Nb, Mb))
 
-    xyzs = np.zeros((Nb, 3, Nf))   # (beads, dim, frames)
+    xyzs = np.zeros((Nbf, 3, Nf))   # (beads, dim, frames)
+    ti = time.time()
     for i in range(Nf):
         xyzs[:, :, i] = read_from_top(frames[i], Nb, btype=bt)
+    tf = time.time()
+    print("Time reading frames: %.2f s." % (tf - ti))
     Cvv = np.zeros((Nf, 3))
     t = np.arange(0, Nf, 1) * tau
 
     ti = time.time()
-    for i in range(Nb):
+    for i in range(Nf):
         Cvv[i] = np.sum(xyzs[:, :, 0] * xyzs[:, :, i], 0) / Nb
     tf = time.time()
     print("Time: %.2f s." % (tf - ti))
@@ -115,10 +107,14 @@ if __name__ == "__main__":
     outname = "cvv_b%i.out" % bt
     hdr = "t, cvv(x), cvv(y), cvv(z)"
     np.savetxt(outname, np.c_[t, Cvv], fmt="%.6e", header=hdr)
+    print("VACF saved in %s." % outname)
 
     D = np.array([simps(Cvv[:, i], t) for i in range(3)])
+    D_2d = np.array([D[0] + D[1], D[1] + D[2], D[0] + D[2]]) / 2.0
+    D_3d = np.sum(D) / 3.0
 
     print("1d diffusivity  (x,  y,  z):  %.6f  %.6f  %.6f" % tuple(D))
-    print("3d diffusivity: %.6f" % (np.sum(D) / 3.0))
+    print("2d diffusivity (xy, yz, xz):  %.6f  %.6f  %.6f" % tuple(D_2d))
+    print("3d diffusivity: %.6f" % D_3d)
 
 
