@@ -191,7 +191,7 @@ def gen_bonds_one_chain(Nmc, mono_beads, start=0):
     """
     Nbm = len(mono_beads)  # number of beads per monomer
 #    mono_bond_block = np.vstack((np.arange(1,Nbm+1), np.arange(0, Nbm))).T
-    mono_bond_bloc = np.c_[np.arange(1, Nbm+1), np.arange(0, Nbm)]
+    mono_bond_block = np.c_[np.arange(1, Nbm+1), np.arange(0, Nbm)]
     mono_bond_block[0, 1] = -2
 #    mono_bond_block = np.array([[1, -2],\
 #                                [2, 1],\
