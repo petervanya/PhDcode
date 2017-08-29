@@ -235,6 +235,7 @@ if __name__ == "__main__":
         if d > 1.0 or d < 0.0:
             sys.exit("Depth should be between 0 and 1.")
         print("2d grid | Slice depth at z-coord: %.1f" % (L*d))
+        print("plane: %s | axis: %s" % (plane, ax))
         rho = np.zeros((Ngrid, Ngrid))
         r0 = np.zeros(3)
         ti = time.time()
@@ -254,7 +255,10 @@ if __name__ == "__main__":
                     (bead, args["<plane>"], dx, d)
             for i in range(Ngrid):
                 for j in range(Ngrid):
-                    r0 = np.array([x[i], x[j], d * L])
+                    r0[plane[0]] = x[i]
+                    r0[plane[1]] = x[j]
+                    r0[ax] = L * d
+#                    r0 = np.array([x[i], x[j], d * L])
                     rho[i, j] = get_gridpoint(xyz, r0, lc, sigma, rc, L, Nx)
         tf = time.time()
         print("Final time: %.2f s." % (tf - ti))
