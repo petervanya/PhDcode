@@ -89,7 +89,7 @@ if __name__ == "__main__":
     print("Matrix Size:", B.shape, "| Grid size dx: %.2f" % dx)
     print("Max / min density: %.2f / %.2f | cutoff: %.2f" \
             % (max_rho, min_rho, rc))
-    print("Full fields: %i / %i | %.2f" % (Nfull, N**3, Nfull/N**3))
+    print("Full fields: %i / %i | %.3f" % (Nfull, N**3, Nfull/N**3))
 
     if args["--save"]:
         figdir = "Clustering"
