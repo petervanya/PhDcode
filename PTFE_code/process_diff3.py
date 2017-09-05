@@ -41,12 +41,12 @@ def collect_data(default_path, elects_d, widths, lmbdas):
                 try:
                     f = open(fpath, "r").readlines()
                     for line in f:
-                        if "1d in SI" in line:
-                            data.extend(np.array(line.split()[3:]).astype(float))
-                        if "2d in SI" in line:
-                            data.extend(np.array(line.split()[3:]).astype(float))
-                        if "3d in SI" in line:
-                            data.extend(np.array(line.split()[3:]).astype(float))
+                        if "1d diff" in line:
+                            data.extend(np.array(line.split()[5:]).astype(float))
+                        if "2d diff" in line:
+                            data.extend(np.array(line.split()[5:]).astype(float))
+                        if "3d diff" in line:
+                            data.extend(np.array(line.split()[2:]).astype(float))
                 except FileNotFoundError:
                     print("File not found: %s." % fpath)
 
@@ -69,14 +69,15 @@ def plot_el(df, el, D, widths, lmbdas, to_pdf):
     for d in widths:
         lbl = "%i nm" % d
         sel = np.array(df[["lmbda", D]][(df.d == d) & (df.elect == el)])
-        plt.plot(sel[:, 0], sel[:, 1] * 1e9, "+-", lw=2, ms=2, mew=2, label=lbl)
+        plt.plot(sel[:, 0], sel[:, 1], "+-", lw=2, ms=2, mew=2, label=lbl)
 
     plt.xlim([lmbdas[0]-1, lmbdas[-1]+1])
-    plt.ylim([0, 20])
+    plt.ylim([0, 0.25])
     plt.xticks([4, 8, 12, 16, 20, 24])
     plt.xlabel("$\lambda$")
     ylbl = {"Dx": "Normal", "Dyz": "Parallel", "D3d": "3d"}
-    plt.ylabel("$D_{\mathrm{%s}} \; (10^{-9} \; \mathrm{m^2/s}) $" % ylbl[D])
+#    plt.ylabel("$D_{\mathrm{%s}} \; (10^{-9} \; \mathrm{m^2/s}) $" % ylbl[D])
+    plt.ylabel("$D_{\mathrm{%s}}$" % ylbl[D])
 
     plt.legend(loc=2, fontsize=22)
     plt.grid()
@@ -98,7 +99,7 @@ if __name__ == "__main__":
     widths = [5, 10, 15, 20]
     df = collect_data(default_path, elects_d, widths, lmbdas)
     dfname = default_path + "all_diff.csv"
-    df.to_csv(dfname, delim=",")
+    df.to_csv(dfname)
     print("Dataframe saved in %s." % dfname)
 
     to_pdf = args["--pdf"]

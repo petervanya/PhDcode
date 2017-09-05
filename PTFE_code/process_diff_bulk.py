@@ -42,12 +42,12 @@ def collect_data(default_path, lmbdas, bt):
         try:
             f = open(fpath, "r").readlines()
             for line in f:
-                if "1d in SI" in line:
-                    data.extend(np.array(line.split()[3:]).astype(float))
-                if "2d in SI" in line:
-                    data.extend(np.array(line.split()[3:]).astype(float))
-                if "3d in SI" in line:
-                    data.extend(np.array(line.split()[3:]).astype(float))
+                if "1d diff" in line:
+                    data.extend(np.array(line.split()[5:]).astype(float))
+                if "2d diff" in line:
+                    data.extend(np.array(line.split()[5:]).astype(float))
+                if "3d diff" in line:
+                    data.extend(np.array(line.split()[2:]).astype(float))
         except FileNotFoundError:
             print("File not found: %s." % fpath)
 
@@ -106,7 +106,7 @@ if __name__ == "__main__":
     lmbdas = sorted(list(range(4, 25, 2)) + [9])
     df = collect_data(default_path, lmbdas, bt)
     dfname = default_path + "all_diff_b%i.csv" % bt
-    df.to_csv(dfname, delim=",")
+    df.to_csv(dfname)
     print("Dataframe saved in %s." % dfname)
 
     if args["--sparse"]:

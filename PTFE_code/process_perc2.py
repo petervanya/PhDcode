@@ -17,6 +17,7 @@ from pandas import DataFrame, read_csv
 import matplotlib.pyplot as plt
 from matplotlib.ticker import FormatStrFormatter
 import matplotlib
+import sys
 from docopt import docopt
 
 
@@ -40,9 +41,12 @@ def collect_data(default_path, elects_d, widths, lmbdas):
                     fpath = str(default_path) + fname
                     try:
                         f = open(fpath, "r").readlines()
-                        data.append(float(f[-1].split()[-1]))
+                        data.append(float(f[-1].split()[-1]))  # P inf
                         fields = [line for line in f if "Full fields" in line]
-                        data.append(fields[-1].split()[-1])
+                        if len(fields) == 0:
+                            print("Empty Full fields, check %s" % fname)
+                            continue
+                        data.append(float(fields[-1].split()[-1]))
                     except FileNotFoundError:
                         print("File not found: %s." % fpath)
 
@@ -94,7 +98,7 @@ if __name__ == "__main__":
 
     df = collect_data(default_path, elects_d, widths, lmbdas)
     dfname = default_path + "all_perc.csv"
-    df.to_csv(dfname, delim=",")
+    df.to_csv(dfname)
     print("Dataframe saved in %s." % dfname)
 
     to_pdf = args["--pdf"]

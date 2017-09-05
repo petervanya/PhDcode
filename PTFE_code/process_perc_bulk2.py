@@ -80,7 +80,7 @@ if __name__ == "__main__":
     lmbdas = np.arange(4, 25, 2).astype(int)
     df = collect_data(default_path, lmbdas)
     dfname = default_path + "all_perc.csv"
-    df.to_csv(dfname, delim=",")
+    df.to_csv(dfname)
     print("Dataframe saved in %s." % dfname)
 
     if df.empty:
