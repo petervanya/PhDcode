@@ -46,7 +46,7 @@ ax.get_xaxis().set_visible(False)
 ax.get_yaxis().set_visible(False)
 plt.title("$d = %i \,\,\\rm{nm}, \quad \lambda = %i$" % (d, l))
 if args["--bulk"]:
-    plt.title("Bulk")
+    plt.title("Bulk, $\quad \lambda = %i$" % l)
 
 figname = "clustering_d%i_l%i" % (d, l) + ext
 if args["--bulk"]:
