@@ -1,0 +1,50 @@
+# LAMMPS input file for binary mixture
+clear
+units              si
+dimension          3
+boundary           p p p
+atom_style         atomic
+
+comm_modify        vel yes cutoff 5.0
+neighbor           1.5 bin
+variable           rc equal 1.0
+variable           Ns equal 10000
+variable           dt equal 0.05
+variable           kB equal 1.381e-23
+variable           T equal 1.0/${kB}
+variable           gamma equal 4.5
+variable           seed equal 1234
+variable           fname index binmixt.data
+
+read_data          ${fname}
+
+pair_style         dpd ${T} ${rc} ${seed}
+pair_coeff         1 1 25.0 ${gamma} ${rc}
+pair_coeff         2 2 25.0 ${gamma} ${rc}
+pair_coeff         1 2 50.0 ${gamma} ${rc}
+
+shell              mkdir Dump
+dump               1 all xyz 100 Dump/dump_*.xyz
+
+velocity           all create ${T} ${seed}
+reset_timestep     0
+timestep           ${dt}
+fix                1 all nve
+
+variable           TEMP equal ${kB}*temp
+thermo             100
+thermo_style       custom step temp v_TEMP press
+run                ${Ns}
+
+thermo             1
+compute            MSD all msd
+compute            VACF all vacf
+thermo_style       custom step temp v_TEMP c_MSD[4] c_VACF[1] c_VACF[2] c_VACF[3]
+shell              mkdir Dump_vel
+#dump               2 all custom 1 Dump_vel/dump_*.vel type vx vy vz
+#dump_modify        2 sort id
+run                100
+
+print              "All done."
+
+
