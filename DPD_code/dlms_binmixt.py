@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 """Usage:
     dlms_binmixt.py [--f <f> --L <L> --rho <rho> --xyz --vel <T>]
-                    [--aii <aii> --da <da> --loc]
+                    [--aii <aii> --da <da> --loc --gamma <g>]
 
 Generate a binary mixture (A/B particles) CONFIG and FIELD file 
 for DL_MESO package.
@@ -15,8 +15,9 @@ Options:
     --xyz          Create xyz file
     --vel <T>      Initialise velocities at given temperature T
     --loc          Localise A beads in left and B beads in right side of box
+    --gamma <g>    Friction [default: 4.5]
 
-pv278@cam.ac.uk, 02/06/16, modified 15/02/16
+pv278@cam.ac.uk, 02/06/16, modified 15/02/17
 """
 import numpy as np
 from dlms_lib import inter2str, species2str, save_xyzfile
@@ -75,7 +76,7 @@ if __name__ == "__main__":
     print("Initial configuration written in %s" % fname)
 
     # ===== generate FIELD file with bead species and interactions
-    rc, gamma = 1.0, 4.5
+    rc, gamma = 1.0, float(args["--gamma"])
     a_ij = {}
     a_ij["A A"] = [aii, rc, gamma]
     a_ij["B B"] = [aii, rc, gamma]
