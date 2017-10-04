@@ -1,9 +1,20 @@
 #!/usr/bin/julia
-"""
-Order parameter in Julia
+doc = """Usage:
+    op_bin_mixt.jl normal [--N <N> --f <f> --L <L> --rc <rc>]
+    op_bin_mixt.jl linkcells [--N <N> --f <f> --L <L> --rc <rc> --nx <nx>]
+
+Order parameter in Julia using link cells
+
+Options:
+    --N <N>    Number of particles [default: 100]
+    --f <f>    Fraction of A particles [default: 0.5]
+    --L <L>    Box size [default: 10.0]
+    --rc <rc>  Cutoff distance [default: 1.3]
+    --nx <nx>  Link cells boxes [default: 5]
 
 04/09/16
 """
+using DocOpt
 
 function gen_ordered_box(N1, N2)
   types = vcat(ones(Int, N1), 2*ones(Int, N2))
@@ -63,7 +74,7 @@ function order_param_naive(types, xyz, L, rc)
   for i = 1:N
     n1, n2 = 0, 0
     for j = 1:N
-      dr = (xyz[i, :] - xyz[j, :])'
+      dr = (xyz[i, :] - xyz[j, :])  # do not transpose from v0.5.0
       G = inv_cell * dr
       Gn = G - round(G)
       dr = cell * Gn
@@ -88,7 +99,8 @@ function order_param_naive(types, xyz, L, rc)
 end
 
 
-function order_param_lc(types, xyz, lc, L, rc)
+function order_param_lc(types, xyz, lc, L, Nx, rc)
+  println(Nx)
   N = size(xyz)[1]
   cell = L * eye(3)
   inv_cell = pinv(cell)
@@ -109,7 +121,7 @@ function order_param_lc(types, xyz, lc, L, rc)
     end
 
     for j in neigh_atoms
-      dr = (xyz[i, :] - xyz[j, :])'
+      dr = (xyz[i, :] - xyz[j, :])
       G = inv_cell * dr
       Gn = G - round(G)
       dr = cell * Gn
@@ -182,14 +194,14 @@ function neighbour_cells(id, Nx)
   neighs = zeros(Int, nn, 3)
   p = product([-1 0 1], 3)
   for i in 1:nn
-    neighs[i, :] = mod(r + p[i, :], Nx)
+    neighs[i, :] = mod(r + p[i, :]', Nx)
   end
   ids = [id_from_coord(neighs[i, :], Nx) for i = 1:nn]
 end
 
 
 function init_lc(Lx, Nx)
-  lc = Dict([i => Int[] for i = 1:Nx^3])
+  lc = Dict(i => Int[] for i = 1:Nx^3)
 end
 
 
@@ -206,9 +218,9 @@ function test()
   Nx = 10
   @printf "Testing link cells Nx = %i\n" Nx
   n = [0 0 0]
-  @printf "ID from coord [0 0 0] (should be 1) %i\n" id_from_coord(n, Nx)
+  @printf "ID from coord [0 0 0] (should be 1): %i\n" id_from_coord(n, Nx)
   n = [1 1 1]
-  @printf "ID from coord [1 1 1] (should be 112) %i\n" id_from_coord(n, Nx)
+  @printf "ID from coord [1 1 1] (should be 112): %i\n" id_from_coord(n, Nx)
 
   id = 1000
   println("coord from ID = 1000 (should be [9 9 9]): ", cell_coord(id, Nx))
@@ -220,61 +232,88 @@ end
 
 # ===== main
 srand(1234)
-L = 10.0
-Nx = 6
-f = 0.5
-N = 1000
-rc = 1.3
+args = docopt(doc)
+N = parse(Int, args["--N"])
+f = parse(Float64, args["--f"])
+L = parse(Float64, args["--L"])
+rc = parse(Float64, args["--rc"])
 
-if length(ARGS) == 2
-  println("2 args")
-  N = parse(Int, ARGS[1])
-  rc = parse(Float64, ARGS[2])
-elseif length(ARGS) == 1
-  if ARGS[1] == "-h"
-    @printf "Usage:\n    op_bin_mixt.jl <N> <rc>\n"
-    exit(0)
-  else
-    N = parse(Int, ARGS[1])
-  end
-end
+#for kv in args
+#  println(kv[1], "   ", kv[2])
+#end
+
+#L = 10.0
+#Nx = 6
+#f = 0.5
+#N = 1000
+#rc = 1.3
+#
+#if length(ARGS) == 2
+#  println("2 args")
+#  N = parse(Int, ARGS[1])
+#  rc = parse(Float64, ARGS[2])
+#elseif length(ARGS) == 1
+#  if ARGS[1] == "-h"
+#    @printf "Usage:\n    op_bin_mixt.jl <N> <rc>\n"
+#    exit(0)
+#  else
+#    N = parse(Int, ARGS[1])
+#  end
+#end
+
 
 N1, N2 = Int(f * N), Int((1-f) * N)
-@printf "N: %i | rc: %.2f | L: %.1f | f: %.2f | Nx: %i\n" N rc L f Nx
 
-# ===== one cell
-@printf "Testing ordered box.\n"
-types, xyz = gen_ordered_box(N1, N2)
-tic()
-op = order_param_naive(types, xyz, L, rc)
-toc()
-@printf "=== op: %.3f\n" op
 
-@printf "Testing disordered box.\n"
-types, xyz = gen_disordered_box(N1, N2)
-tic()
-op = order_param_naive(types, xyz, L, rc)
-toc()
-@printf "=== op: %.3f\n" op
+if args["normal"]
+  @printf "N: %i | rc: %.2f | L: %.1f | f: %.2f\n" N rc L f
+  @printf "Testing ordered box.\n"
+  types, xyz = gen_ordered_box(N1, N2)
+  tic()
+  op = order_param_naive(types, xyz, L, rc)
+  toc()
+  @printf "=== op: %.3f\n" op
+  
+  @printf "Testing disordered box.\n"
+  types, xyz = gen_disordered_box(N1, N2)
+  tic()
+  op = order_param_naive(types, xyz, L, rc)
+  toc()
+  @printf "=== op: %.3f\n" op
+end
 
-# ===== link cells
-#Lx = L / Nx
-#lc = init_lc(Lx, Nx)
-##println(lc)
-#if Lx < rc
-#  println("WARNING: Cell size Lx smaller than cutoff rc.")
-#end
-#
-#types, xyz = gen_ordered_box(N1, N2)
-#populate_lc(lc, xyz, Lx, Nx)
-##test()
-##for i = 1:Nx^3
-##  println(i, "  ", lc[i])
-##end
-#
-#tic()
-#op = order_param_lc(types, xyz, lc, L, rc)
-#toc()
-#@printf "=== op: %.3f\n" op
-#
-#
+if args["linkcells"]
+  Nx = parse(Int, args["--nx"])
+  Nx = Int(round(L / rc))
+  @printf "N: %i | rc: %.2f | L: %.1f | f: %.2f | Nx: %i\n" N rc L f Nx
+  println("Testing link cells.")
+  Lx = L / Nx
+  lc = init_lc(Lx, Nx)
+  if Lx < rc
+    println("WARNING: Cell size Lx smaller than cutoff rc.")
+  end
+  
+  @printf "Testing ordered box.\n"
+  types, xyz = gen_ordered_box(N1, N2)
+  populate_lc(lc, xyz, Lx, Nx)
+  
+#  test()
+#  println(lc)
+#  for i = 1:Nx^3
+#    println(i, "  ", lc[i])
+#  end
+  
+  tic()
+  op = order_param_lc(types, xyz, lc, L, Nx, rc)
+  toc()
+  @printf "=== op: %.3f\n" op
+
+  @printf "Testing disordered box.\n"
+  types, xyz = gen_disordered_box(N1, N2)
+  tic()
+  op = order_param_lc(types, xyz, L, rc, Nx, rc)
+  toc()
+  @printf "=== op: %.3f\n" op
+end
+
+
