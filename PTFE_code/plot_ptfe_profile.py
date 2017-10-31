@@ -1,22 +1,23 @@
 #!/usr/bin/env python
 """Usage:
     plot_ptfe_profile.py <fileW> <fileB> [--boxsize <L> --slab <sl> --rc <rc>]
-                         [--pdf --parse_title]
+                         [--tex --fmt <fmt> --parse_title]
 
-[AD HOC] Plot normalised 1d density profiles of water and PTFE backbone.
+Plot normalised 1d density profiles of water and PTFE backbone.
 Can add lines denoting slab width.
-Choose lengthscale:
-* Wu: 8.14 AA
-* Yamamoto: 7.1 AA
+Possible lengthscale:
+* 8.14 AA (Wu et al.)
+* 7.1 AA (Yamamoto)
 
 Options:
     --boxsize <L>   Box size in DPD units [default: 40]
     --slab <sl>     Slab width in nm
-    --pdf           Plot as pdf
     --parse_title   Set title from information in file name
     --rc <rc>       DPD length scale in AA [default: 8.14]
+    --tex           Use tex for axes
+    --fmt <fmt>     Plot format [default: png]
 
-25/02/16
+25/02/16, updated 17/10/17
 """
 import numpy as np
 import matplotlib.pyplot as plt
@@ -32,14 +33,13 @@ fileW, fileB = args["<fileW>"], args["<fileB>"]
 if not os.path.isfile(fileW) or not os.path.isfile(fileB):
     sys.exit("One or two files not found. Input: %s, %s" % (fileW, fileB))
 
-if args["--pdf"]:
-    ext = ".pdf"
+if args["--tex"]:
     plt.rc('text', usetex=True)
     plt.rc('font', family='serif')
-else:
-    ext = ".png"
+figfmt = args["--fmt"]
 
 print("Plotting: %s | %s" % (fileW, fileB))
+fig, ax = plt.subplots(figsize=(8, 6))
 L = float(args["--boxsize"]) * r_DPD * 1e9
 if args["--slab"]:
     D = float(args["--slab"])
@@ -70,7 +70,7 @@ if args["--parse_title"]:
     plt.title("$d = %i\,\, \\rm{nm}, \quad\lambda = %i$" % (d, l))
     confname = "_d%i_l%i" % (d, l)
 
-imgname = "profile_1d" + confname + ext
+imgname = "profile_1d" + confname + "." + figfmt
 plt.savefig(imgname, bbox_inches='tight')
 print("Plot saved in", imgname)
 

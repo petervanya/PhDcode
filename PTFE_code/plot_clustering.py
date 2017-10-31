@@ -1,5 +1,7 @@
 #!/usr/bin/env python
-"""Usage: plot_clustering.py <fname> [--rc <rc> --d <d> --l <l> --bulk --pdf]
+"""Usage:
+    plot_clustering.py <fname> [--rc <rc> --d <d> --l <l> --bulk]
+                       [--tex --fmt <fmt>]
 
 Plot the clustering map from the density file
 with title giving slab width and water uptake or "bulk".
@@ -8,6 +10,8 @@ Options:
     --d <d>        Slab width [default: 5]
     --l <l>        Water uptake [default: 4]
     --rc <rc>      Cutoff [default: 0.3]
+    --tex          Use tex for axes
+    --fmt <fmt>    Plot format [default: png]
 
 18/05/17
 """
@@ -33,11 +37,10 @@ try:
 except FileNotFoundError:
     sys.exit("File %s not found." % fname)
 
-ext = ".png"
-if args["--pdf"]:
-    ext = ".pdf"
+if args["--tex"]:
     plt.rc('text', usetex=True)
     plt.rc('font', family='serif')
+figfmt = args["--fmt"]
 
 fig = plt.figure()
 ax = plt.axes()
@@ -48,9 +51,9 @@ plt.title("$d = %i \,\,\\rm{nm}, \quad \lambda = %i$" % (d, l))
 if args["--bulk"]:
     plt.title("Bulk, $\quad \lambda = %i$" % l)
 
-figname = "clustering_d%i_l%i" % (d, l) + ext
+figname = "clustering_d%i_l%i" % (d, l) + "." + figfmt
 if args["--bulk"]:
-    figname = "clustering_l%i" % (l,) + ext
+    figname = "clustering_l%i" % (l,) + "." + figfmt
 plt.savefig(figname, bbox_inches="tight")
 print("Plot saved in %s." % figname)
 
