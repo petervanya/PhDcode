@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 """Usage:
-    process_densities.py <outfile> [--plot_B_cut --plot_A_cut --plot-imshow]
+    process_densities.py <outfile> [--plot_B_cut --plot_A_cut]
+                                   [--plot-imshow --interp <in>]
 
 Load the raw density file, create a data frame out of it and plot results.
 
@@ -8,6 +9,7 @@ Options:
     --plot_B_cut     Plot slices with constant B
     --plot_A_cut     Plot slices with constant A
     --plot-imshow    Plot 3D image
+    --interp <in>    Imshow interpolation [default: none]
 
 21/07/17
 """
@@ -59,14 +61,24 @@ def plot_A_cut(cut_df, Aval):
 args = docopt(__doc__)
 outfile = args["<outfile>"]
 print("Reading %s..." % outfile)
-df = pd.read_csv(outfile, sep=" ", header=None)
+try:
+    df = pd.read_csv(outfile, sep=" ", header=None)
+except FileNotFoundError:
+    sys.exit("File %s does not exist." % outfile)
 df.columns = ["sys", "rho"]
 df["rd"] = [float(line.split("_")[1]) for line in df.sys]
 df["A"] = [float(line.split("_")[3]) for line in df.sys]
 df["B"] = [float(line.split("_")[5]) for line in df.sys]
-df = df.drop("sys", 1)
+rd = df.rd[0]
 df = df[df.A < 0]
 
+rhocut = 1.85
+df_ls = df[df.rho >= rhocut].sys.values
+outname = "configs_ls.out"
+np.savetxt(outname, df_ls, fmt="%s")
+print("Liquid and solid configs for cutoff %.2f saved in %s." % (rhocut, outname))
+
+df = df.drop("sys", 1)
 df = df[["rd", "A", "B", "rho"]]
 dfname = "density_cleared.out"
 df.to_csv(dfname)
@@ -90,17 +102,23 @@ if args["--plot_A_cut"]:
         plot_A_cut(cut_df, A)
 
 if args["--plot-imshow"]:
+    interp = args["--interp"]
     M, N = len(As), len(Bs)
     As_d = {k: v for k, v in zip(sorted(As), range(M))}
     Bs_d = {k: v for k, v in zip(sorted(Bs), range(N))}
     extent = np.array([5, 100, -5, -100]) + np.array([-1, 1, 1, -1]) * 2.5
     rho = np.zeros((M, N))
-    for i, r in df2.iterrows():
-        rho[As_d[r["A"]], Bs_d[r["B"]]] = r["rho"]
-    plt.imshow(rho, extent=extent)
+    for _, r in df.iterrows():
+        if r["B"] > - r["A"] * 2 * np.pi * rd**3 / 15:
+            rho[As_d[r["A"]], Bs_d[r["B"]]] = r["rho"]
+        else:       # no-go region should be in white
+            rho[As_d[r["A"]], Bs_d[r["B"]]] = np.nan
+    plt.imshow(rho, extent=extent, interpolation=interp)
+    plt.colorbar()
     plt.xlabel("$B$")
     plt.ylabel("$A$")
-    plt.colorbar()
-    plt.savefig("density_imshow.png")
+    figname = "density_imshow.png"
+    plt.savefig(figname, bbox_inches="tight")
+    print("Imshow saved in %s." % figname)
 
 
