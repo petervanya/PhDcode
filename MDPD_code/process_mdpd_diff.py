@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 """Usage:
-    process_mdpd_diff.py <outfile> [--plot_B_cut --plot_A_cut --plot-imshow]
-                                   [--dcut <dc>]
+    process_mdpd_diff.py <outfile> [--plot_B_cut --plot_A_cut --dcut <dc>]
+                                   [--plot-imshow --interp <in>]
 
 Load the raw density file, create a data frame out of it and plot results.
 
@@ -10,6 +10,7 @@ Options:
     --plot_A_cut     Plot slices with constant A
     --plot-imshow    Plot 3D image
     --dcut <dc>      Cutoff for diffusivity of a solid [default: 0.0025]
+    --interp <in>    Imshow interpolation [default: none]
 
 08/09/17, modified 23/10/17
 """
@@ -68,7 +69,7 @@ df = df[df.A < 0]              # process only negative As
 Dcut = float(args["--dcut"])   # lowest dr^2 = 0.015: D = 0.015/6 = 0.0025
 
 df_lg = df[df.D3d >= Dcut].sys.values
-outname = "config_lg.out"
+outname = "configs_lg.out"
 np.savetxt(outname, df_lg, fmt="%s")
 print("Liquid and gas configs for cutoff %.3e saved in %s." % (Dcut, outname))
 
@@ -96,6 +97,7 @@ if args["--plot_A_cut"]:
         plot_A_cut(cut_df, A, rd)
 
 if args["--plot-imshow"]:
+    interp = args["--interp"]
     M, N = len(As), len(Bs)
     As_d = {k: v for k, v in zip(sorted(As), range(M))}
     Bs_d = {k: v for k, v in zip(sorted(Bs), range(N))}
@@ -105,9 +107,18 @@ if args["--plot-imshow"]:
     extent = np.array([5, 100, -5, -100]) + np.array([-1, 1, 1, -1]) * 2.5
 
     D3d = np.zeros((M, N))
+    D3d_solid = np.zeros((M, N))
     for i, r in df.iterrows():
-        D3d[As_d[r["A"]], Bs_d[r["B"]]] = r["D3d"]
-    plt.imshow(D3d, extent=extent)
+        if r["B"] > - r["A"] * 2 * np.pi * rd**3 / 15:
+            D3d[As_d[r["A"]], Bs_d[r["B"]]] = r["D3d"]
+            if r["D3d"] > Dcut:
+                D3d_solid[As_d[r["A"]], Bs_d[r["B"]]] = 1.0
+            else:
+                D3d_solid[As_d[r["A"]], Bs_d[r["B"]]] = 0.0
+        else:       # no-go region should be in white
+            D3d[As_d[r["A"]], Bs_d[r["B"]]] = np.nan
+            D3d_solid[As_d[r["A"]], Bs_d[r["B"]]] = np.nan
+    plt.imshow(D3d, extent=extent, vmin=0.0, interpolation=interp)
     plt.xlabel("$B$")
     plt.ylabel("$A$")
     plt.colorbar()
@@ -116,10 +127,8 @@ if args["--plot-imshow"]:
 
     plt.clf()
     print("Cutoff for solid D: %.5f" % Dcut)
-    D3d = np.zeros((M, N))
-    for i, r in df.iterrows():
-        D3d[As_d[r["A"]], Bs_d[r["B"]]] = r["D3d"]
-    plt.imshow(D3d > Dcut, extent=extent)
+    plt.imshow(D3d_solid, vmax=1.0, vmin=0.0, extent=extent, \
+            interpolation=interp)
     plt.xlabel("$B$")
     plt.ylabel("$A$")
     plt.title("$D < %.5f$" % Dcut)
