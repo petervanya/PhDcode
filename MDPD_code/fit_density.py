@@ -1,11 +1,12 @@
 #!/usr/bin/env python
 """Usage:
-    fit_density.py <profile> [--cut <rhoc> --plot --saveplot]
+    fit_density.py <profile> [--cut <rhoc> --iter <it> --plot]
 
 Fit the density profile using hyperbolic tan.
 
 Options:
     --cut <rhoc>   Cutoff below which density is zero [default: 0.5]
+    --iter <it>    Number of fitting iterations [default: 2000]
 
 20/07/17
 """
@@ -21,6 +22,7 @@ def func(x, c1, c2, c3, c4, c5):
 
 args = docopt(__doc__)
 cut = float(args["--cut"])
+Nit = int(args["--iter"])
 pr = args["<profile>"]
 try:
     A = np.loadtxt(pr)
@@ -32,9 +34,10 @@ dx = x[1] - x[0]
 N = len(x)
 L = N * dx
 guess = [5.0, 10.0, L / 2, 2.0, 0.0]
-popt, pcov = curve_fit(func, x, rho, p0=guess)
+popt, pcov = curve_fit(func, x, rho, p0=guess, maxfev=Nit)
 
 print("===== Fitting the MDPD density profile with tanh =====")
+print("Iterations: %i" % Nit)
 print("Params: %s" % popt)
 print("Fitted density: %.3f" % (popt[0] + popt[4]))
 print("Interface slope: %.3f" % popt[1])
@@ -50,11 +53,8 @@ if args["--plot"]:
     plt.xlim([0, L])
     plt.ylim(bottom=0.0)
     plt.legend()
-    if args["--saveplot"]:
-        figname = "density_fit.png"
-        plt.savefig(figname)
-        print("Plot saved in %s." % figname)
-    else:
-        plt.show()
+    figname = "density_fit.png"
+    plt.savefig(figname)
+    print("Plot saved in %s." % figname)
 
 
