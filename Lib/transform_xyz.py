@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 """Usage:
-    transform.py <file> [-c <c>] [-a <a>] [-r <r>] [-s <s>] [-f <f>]
-                      [--save <out>]
+    transform.py <file> [-c <c> -a <a> -r <r> -s <s> -f <f> --save <out>]
 
 Manipulate an xyz file from command line.
 Centre, shift, align or rotate an xyz structure.
@@ -26,12 +25,11 @@ from scipy.linalg import expm
 from math import sqrt, acos, radians
 import sys
 from docopt import docopt
-from xyzlib import Atoms
+from xyz_lib import Atoms
 
 
 if __name__ == "__main__":
     args = docopt(__doc__,version=1.0)
-#    print args
     A = Atoms().read(args["<file>"])
 
     if args["--centre"]:
@@ -61,7 +59,7 @@ if __name__ == "__main__":
     
     if args["--save"]:
         fname = args["--save"]
-        A.save(fname)
+        A.save(fname, vmd=True)
     else:
         print(A)
    
