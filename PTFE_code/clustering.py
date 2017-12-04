@@ -73,16 +73,16 @@ if __name__ == "__main__":
     print("Full fields: %i / %i | %.2f" % (Nfull, N**2, Nfull/N**2))
 
     if args["--save"]:
-        figdir = "Clustering"
-        if not os.path.isdir(figdir):
-            os.makedirs(figdir)
+#        figdir = "Clustering"
+#        if not os.path.isdir(figdir):
+#            os.makedirs(figdir)
         fig = plt.figure()
         ax = plt.axes()
         plt.spy(B)
         ax.get_xaxis().set_visible(False)
         ax.get_yaxis().set_visible(False)
         figname = "clustering_rc%.2f.png" % rc
-        plt.savefig(figdir + "/" + figname, bbox_inches="tight")
+        plt.savefig(figname, bbox_inches="tight")
 
     sizes = []
     nc = 0
