@@ -73,6 +73,11 @@ outname = "configs_lg.out"
 np.savetxt(outname, df_lg, fmt="%s")
 print("Liquid and gas configs for cutoff %.3e saved in %s." % (Dcut, outname))
 
+df_s = df[df.D3d < Dcut].sys.values
+outname = "configs_s.out"
+np.savetxt(outname, df_s, fmt="%s")
+print("Solid configs for cutoff %.3e saved in %s." % (Dcut, outname))
+
 df = df.drop("sys", 1)
 df = df[["rd", "A", "B", "D3d"]]
 dfname = "diff_cleared.out"
