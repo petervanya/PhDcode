@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 """Usage:
     plot_ptfe_profile.py <fileW> <fileB> [--boxsize <L> --slab <sl> --rc <rc>]
-                         [--tex --fmt <fmt> --parse_title]
+                         [--tex --fmt <fmt> --parse_title --mdpd]
 
 Plot normalised 1d density profiles of water and PTFE backbone.
 Can add lines denoting slab width.
@@ -57,8 +57,11 @@ plt.plot(A[:, 0], A[:, 1], "blue", label="water", lw=4)
 plt.xlabel("$x$ (nm)")
 plt.ylabel("Density")
 plt.xlim([0.5, L - 0.5])
-plt.ylim([0, 3])
-plt.yticks([0, 1, 2, 3])
+if args["--mdpd"]:
+    plt.ylim([0, 8])
+else:
+    plt.ylim([0, 3])
+    plt.yticks([0, 1, 2, 3])
 
 # set title
 confname = ""
