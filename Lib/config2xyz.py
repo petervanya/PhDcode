@@ -52,7 +52,7 @@ if __name__ == "__main__":
         print("File contains velocities and forces.")
         N = len(conf_str) // 4
     
-    mask = np.arange(N)*(levcfg + 2)
+    mask = np.arange(N) * (levcfg + 2)
     names = [conf_str[i].split()[0] for i in mask]
     names_dict = {}
 
@@ -109,7 +109,7 @@ if __name__ == "__main__":
         forces = np.array([[float(j) for j in conf_str[i].split()] \
                 for i in mask+3])
         fname = infile.strip(".out") + ".for"
-        save_xyzfile(fname, names, vel)
+        save_xyzfile(fname, names, forces)
         print("Force file saved in", fname)
 
 
