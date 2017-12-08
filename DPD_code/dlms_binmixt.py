@@ -60,6 +60,7 @@ if __name__ == "__main__":
         T = float(args["--vel"])
         print("Initialising velocities, temperature: %.1f" % T)
         vel = np.random.randn(N, 3) * T
+        vel -= np.sum(vel, 0) / N
         levcfg = 1
 
     conf_str = "bla\n" + "0\t" + str(levcfg) + "\n"
