@@ -1,19 +1,20 @@
 #!/usr/bin/env python
 """
 Usage:
-    struct_fact.py <rdf> [--rho <rho> --L <L> --plot --f <f> --limit-k <kl>]
+    struct_fact.py <rdf> [--rho <rho> --L <L> --plot --kmax <kmax> --pts <pts>]
     struct_fact.py <rdf> si [--rho <rho> --L <L> --rc <rc> --nm <nm>]
                             [--plot --f <f> --limit-k <kl>]
 
 Compute the structure factor from the RDF.
+Min k determined by the span of the RDF.
 
 Options:
     --L <L>          Box size [default: 10]
-    --rho <rho>      DPD density [default: 3.0]
+    --rho <rho>      Density [default: 3.0]
     --rc <rc>        DPD cutoff [default: 0.814]
     --nm <nm>        CG degree [default: 6]
-    --f <f>          Sampling freq, multiple of N-points to use for k's [default: 1]
-    --limit-k <kl>   Multiply max k = 2pi/dr by a factor between 0 and 1 [default: 1]
+    --kmax <kmax>    Maximum frequency [default: 20]
+    --pts <pts>      Number of k-points [default: 100]
 
 pv278@cam.ac.uk, 21/08/17
 """
@@ -23,7 +24,7 @@ import sys
 from docopt import docopt
 
 
-def gen_sk(r, gr, k, rho=3.0):
+def gen_sk(r, gr, k, rho):
     dr = r[1] - r[0]
     N = len(r)
     Sk = [1 + 4 * pi * rho * sum([r[j]**2 * (gr[j] - 1.0) * \
@@ -56,10 +57,11 @@ if __name__ == "__main__":
     N = len(r)
     dr = r[1] - r[0]
     kmin = 2 * pi / max(r)
-    kmax = 2 * pi / dr * kl
-#    kmax = max(r)
-    print("Maximum k: %.3f" % kmax)
-    k = np.linspace(0, kmax, f*N+1)[1:]
+    kmax = float(args["--kmax"])
+    Nk = int(args["--pts"])
+    print("Min k: %.3f | Max k: %.3f" % (kmin, kmax))
+    k = np.linspace(kmin, kmax, Nk)
+#    k = np.linspace(0, kmax, f*N+1)[1:]
     Sk = gen_sk(r, gr, k, rho)
     outname = "sk_si.out" if args["si"] else "sk.out"
     np.savetxt(outname, np.c_[k, Sk])
