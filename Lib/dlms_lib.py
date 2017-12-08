@@ -63,6 +63,19 @@ def species2str(beads):
     return s + "\n"
 
 
+def species2str2(beads):
+    """
+    Include freezing parameter.
+    beads: dict of bead populations, e.g. {"A": [500, 0], "B": [500, 0]}
+    Ordering on line: bead type, mass, charge, population, freeze (or not)
+    """
+    s = "SPECIES %i\n" % len(beads)
+    beads = OrderedDict(sorted(beads.items()))
+    for bt, v in beads.items():
+        s += "%s    1.0 0.0 %6i %i\n" % (bt, v[0], v[1])
+    return s + "\n"
+
+
 def inter2str(a_ij):
     """Dictionary of all pair interactions.
     * key: pair, e.g. "A B"
@@ -88,6 +101,7 @@ def inter2str_mdpd(a_ij):
     Method: add mddpd in the future
     """
     s = "INTERACTIONS %i\n" % len(a_ij)
+    a_ij = OrderedDict(sorted(a_ij.items()))
     for k, v in a_ij.items():
         if isinstance(k, tuple): # MODIFY!
             s += "%s %s    %s   " % (k[0], k[1], "mdpd")
@@ -98,6 +112,12 @@ def inter2str_mdpd(a_ij):
             s += "%.3f  %.3f  %.1f  %.1f  %.1f  %.1f  %.2f\n" \
                 % (v[0], v[1], v[2], v[3], v[4], v[5], v[6])
     return s + "\n"
+
+
+def chi2da_mdpd(A, B):
+    """Coefficient converting chi to da for rd = 0.75"""
+    rho = 2.901 + 0.68 * (-A) * (B - 4.09)**(-0.716)
+    return - 0.259 + 0.196 * rho 
 
 
 def mol2str(molname, Nmols, bead_list, bond_mat, bond_type="harm", \
