@@ -78,7 +78,7 @@ if __name__ == "__main__":
     if args["--xyz"]:
         fname = "CONFIG_INIT.xyz"
         names = [1] * N
-        save_xyzfile(fname, np.hstack((np.matrix(names).T, xyz)) )
+        save_xyzfile(fname, np.c_[names, xyz])
         print("xyz file written in %s." % fname)
 
 
