@@ -15,7 +15,7 @@ Options:
 pv278@cam.ac.uk, 13/06/16
 """
 import numpy as np
-import lmp_lib as ll
+from lmp_lib import save_xyzfile
 from docopt import docopt
 import sys
 
@@ -66,7 +66,7 @@ if __name__ == "__main__":
     f = float(args["--f"])
     L = float(args["--L"])
     rho = float(args["--rho"])
-    N = int(rho * L**3)
+    N = int(rho * L**3) // 10 * 10    # round to 10
     if f < 0.0 or f > 1.0:
         print("Fraction f of A beads must be between 0 and 1.")
         sys.exit()
@@ -74,8 +74,10 @@ if __name__ == "__main__":
     print("=== LAMMPS data file for binary mixture ====")
     print("L: %.1f | rho: %.1f | f: %.2f" % (L, rho, f))
 
-    xyz = np.random.rand(N, 3)*L
-    names = [1]*int(f*N) + [2]*int((1-f)*N)
+    NA = int(f * N)
+    NB = N - NA
+    names = [1] * NA + [2] * NB
+    xyz = np.random.rand(N, 3) * L
 
     header = header2str(N, L)
     final_string = header + \
@@ -85,7 +87,8 @@ if __name__ == "__main__":
     if args["--vel"]:
         T = float(args["--vel"])
         print("Initialising velocities, temperature: %.1f" % T)
-        vel = np.random.randn(N, 3)*T
+        vel = np.random.randn(N, 3) * T
+        vel -= np.sum(vel, 0) / N
         final_string += vel2str(vel)
 
     fname = "binmixt.data"
@@ -94,7 +97,7 @@ if __name__ == "__main__":
 
     if args["--xyz"]:
         fname = "binmixt.xyz"
-        ll.save_xyzfile(fname, np.hstack((np.matrix(names).T, xyz)) )
+        save_xyzfile(fname, np.c_[names, xyz])
         print("xyz file written in", fname)
 
 
