@@ -146,6 +146,7 @@ print("A: %.2f | B: %.2f" % (A, B))
 pT_avg = np.zeros(Nu)
 du = Lx / Nu
 u = np.arange(0, Lx, du)
+u = np.linspace(0, Lx, Nu+1)[:-1]
 gammas = np.zeros(Nf)
 print("Nu: %i | du: %.3f" % (Nu, du))
    
