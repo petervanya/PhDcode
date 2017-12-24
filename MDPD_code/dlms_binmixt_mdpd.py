@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 """Usage:
     dlms_binmixt_mdpd.py [--f <f> --L <L> --rho <rho> --xyz --vel <T>]
-                         [--A <A> --dA <dA> --B <B> --dB <dB>]
+                         [--A <A> --dA <dA> --B <B> --dB <dB> --loc]
 
 Generate a binary mixture (A/B particles) CONFIG and FIELD file 
 for DL_MESO package.
@@ -16,6 +16,7 @@ Options:
     --dB <dB>      Excess interaction between A and B [default: 0]
     --xyz          Create xyz file
     --vel <T>      Initialise velocities at given temperature T
+    --loc          Localise A beads in left and B beads in right side of box
 
 pv278@cam.ac.uk, 03/02/17
 """
@@ -53,6 +54,16 @@ if __name__ == "__main__":
     NB = N - NA
     names = ["A"] * NA + ["B"] * NB
     xyz = np.random.rand(N, 3) * L
+    if args["--loc"]:
+        xyz[:NA, 0] = np.random.rand(NA) * f * L[0]
+        xyz[NA:, 0] = np.random.rand(NB) * (1 - f) * L[0] + f * L[0]
+
+    levcfg = 0
+    if args["--vel"]:
+        T = float(args["--vel"])
+        print("Initialising velocities, temperature: %.1f" % T)
+        vel = np.random.randn(N, 3) * T
+        levcfg = 1
     save_config("CONFIG", names, xyz, np.diag(L))
 
     # ===== generate FIELD file with bead species and interactions
@@ -67,7 +78,6 @@ if __name__ == "__main__":
                    "close\n"
     open("FIELD", "w").write(field_string)
     print("FIELD file saved.")
-
 
     if args["--xyz"]:
         fname = "CONFIG_INIT.xyz"
