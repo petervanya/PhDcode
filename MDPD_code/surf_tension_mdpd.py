@@ -52,7 +52,7 @@ def parse_field():
             sp_lines = f[line+1 : line+Nbt+1]
         if "INTERACTIONS" in f[line].upper():
             Ni = int(f[line].split()[-1])
-            int_lines = f[line+1 : line+Ni+1]
+            ip_lines = f[line+1 : line+Ni+1]
 
     sp = {}       # species
     sp_num = {}   # species dict with numbers
@@ -61,23 +61,23 @@ def parse_field():
         sp[tmp[0]] = i
         sp_num[tmp[0]] = int(tmp[3])
 
-    int_d = {}    # interaction dict
+    ip_d = {}    # interaction dict
     for i in range(Ni):
-        tmp = int_lines[i].split()
+        tmp = ip_lines[i].split()
         if tmp[2].lower() != "mdpd":
             sys.exit("Interaction type should be mdpd.")
-        int_d[tmp[0] + " " + tmp[1]] = tmp[3:5]
+        ip_d[tmp[0] + " " + tmp[1]] = tmp[3:5]
 
-    int_A = np.zeros((Nbt, Nbt))  # interaction matrix
-    int_B = np.zeros((Nbt, Nbt))
-    for k, v in int_d.items():
+    ip_A = np.zeros((Nbt, Nbt))  # interaction matrix
+    ip_B = np.zeros((Nbt, Nbt))
+    for k, v in ip_d.items():
         i, j = [sp[l] for l in k.split()]
-        int_A[i, j] = v[0]
-        int_A[j, i] = v[0]
-        int_B[i, j] = v[1]
-        int_B[j, i] = v[1]
+        ip_A[i, j] = v[0]
+        ip_A[j, i] = v[0]
+        ip_B[i, j] = v[1]
+        ip_B[j, i] = v[1]
 
-    return int_A, int_B
+    return ip_A, ip_B
 
 
 def perodic_1D_difference(v1, v2, Lu):
@@ -147,7 +147,6 @@ def pressure_tensor(nm, xyz, rho, cA, cB, Ls, u, Nb, rd=0.75, rc=1.0):
         p_yy = np.sum(dms[1] / np.abs(dms[u]) * Fy)
         p_zz = np.sum(dms[2] / np.abs(dms[u]) * Fz)
         P[nb] = [p_xx, p_yy, p_zz]
-    print("Pressure:\n",P)
     return P
 
 
@@ -158,7 +157,7 @@ if __name__ == "__main__":
     if Nf == 0:
         sys.exit("No frames captured.")
     Ls, rd = parse_control()
-    coeffsA, coeffsB = parse_field()
+    ip_A, ip_B = parse_field()
 
     coord = args["<coord>"]
     coords = {"x": 0, "y": 1, "z": 2}
@@ -177,18 +176,17 @@ if __name__ == "__main__":
     print("===== Surface tension for MDPD =====")
     print("Frames: %i | Box: %s | rd: %.2f" % (Nf, Ls, rd))
     print("Nu: %i | du: %.4f" % (len(us), Ls[u] / len(us)))
-    print("Coeffs:\n", coeffsA, "\n", coeffsB)
+    print("Coeffs:\n", ip_A, "\n", ip_B)
 
     ti = time.time()
     for j in range(Nf):
         nm, xyz = read_xyzfile2(frame)
-        nm = nm.astype(int) - 1
+        nm -= 1
         dms = distance_matrix(xyz, xyz, Ls)
         r = np.sqrt(dms[0]**2 + dms[1]**2 + dms[2]**2)
         rho = local_density(r, rd)
 
-        Pi = pressure_tensor(nm, xyz, rho, coeffsA, coeffsB, \
-                Ls, u, Nb, rd, rc=1.0)
+        Pi = pressure_tensor(nm, xyz, rho, ip_A, ip_B, Ls, u, Nb, rd)
         Pti = (Pi[:, u] - (Pi[:, uperp[0]] + Pi[:, uperp[1]]) / 2.0) / Area
         Pt += Pti / Nf
         gammas[j] = simps(Pti, us) / 2.0
