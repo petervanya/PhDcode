@@ -101,7 +101,7 @@ def read_xyzfile(outfile):
     A = open(outfile, "r").readlines()[2:]
     A = [line.split() for line in A]
     A = np.array(A, order="F").astype(float)
-    return A
+    return A[:, 0], A[:, 1:]
 
 
 def save_xyzfile(fname, mat):
@@ -111,5 +111,15 @@ def save_xyzfile(fname, mat):
         f.write(str(N) + "\nbla\n")
         for i in range(N):
             f.write("%i\t%f\t%f\t%f\n" % (mat[i, 0], mat[i, 1], mat[i, 2], mat[i, 3]))
+
+
+def read_velfile(outfile):
+    """Read one xyz outfile into a numpy matrix"""
+    if not os.path.isfile(outfile):
+         sys.exit("File %s not found." % outfile)
+    A = open(outfile, "r").readlines()[9:]
+    A = [line.split() for line in A]
+    A = np.array(A, order="F").astype(float)
+    return A[:, 0], A[:, 1:]
 
 

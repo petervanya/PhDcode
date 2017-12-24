@@ -86,9 +86,9 @@ for i in range(Nhf-Nf+1, Nhf+1):
     os.rename("CONFIG.xyz", "Dump/dump_%04i.xyz" % i)
 
     if os.path.isfile("CONFIG.vel"):
-        os.rename("CONFIG.vel",  "Dump_vel/dump_%03i.vel" % i)
+        os.rename("CONFIG.vel",  "Dump_vel/dump_%04i.vel" % i)
     if os.path.isfile("CONFIG.for"):
-        os.rename("CONFIG.for",  "Dump_for/dump_%03i.for" % i)
+        os.rename("CONFIG.for",  "Dump_for/dump_%04i.for" % i)
 tf = time.time()
 print("Total time: %.2f s." % (tf - ti))
 
