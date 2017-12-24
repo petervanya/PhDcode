@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """Usage:
-    gen_binmixt.py [--f <f> --L <L> --rho <rho> --xyz --vel <T>]
+    gen_binmixt.py [--f <f> --L <L> --rho <rho> --xyz --vel <T> --loc]
 
 Create a LAMMPS data file for A/B binary mixture with fraction f of A beads.
 LAMMPS atom_style: atomic.
@@ -11,6 +11,7 @@ Options:
     --rho <rho>    Density of the system [default: 3.0]
     --xyz          Create xyz file
     --vel <T>      Initialise velocities at given temperature T
+    --loc          Localise A beads in left and B beads in right side of box
 
 pv278@cam.ac.uk, 13/06/16
 """
@@ -26,9 +27,9 @@ def header2str(N, L):
     s += str(N) + " atoms\n"
     s += "2 atom types\n"
     s += "\n"
-    s += "0.0 " + str(L) + " xlo xhi\n"
-    s += "0.0 " + str(L) + " ylo yhi\n"
-    s += "0.0 " + str(L) + " zlo zhi\n\n"
+    s += "0.0 " + str(L[0]) + " xlo xhi\n"
+    s += "0.0 " + str(L[1]) + " ylo yhi\n"
+    s += "0.0 " + str(L[2]) + " zlo zhi\n\n"
     return s
 
 
@@ -64,20 +65,30 @@ if __name__ == "__main__":
     args = docopt(__doc__)
     np.random.seed(1234)
     f = float(args["--f"])
-    L = float(args["--L"])
     rho = float(args["--rho"])
-    N = int(rho * L**3) // 10 * 10    # round to 10
+    s = args["--L"].split()
+    if len(s) == 1:
+        L = float(s[0]) * np.ones(3)
+    elif len(s) == 3:
+        L = np.array(s).astype(float)
+    else:
+        sys.exit("<L> should have size 1 or 3.")
+    N = int(rho * np.prod(L)) // 10 * 10     # round to 10
     if f < 0.0 or f > 1.0:
         print("Fraction f of A beads must be between 0 and 1.")
         sys.exit()
 
     print("=== LAMMPS data file for binary mixture ====")
-    print("L: %.1f | rho: %.1f | f: %.2f" % (L, rho, f))
+    print("N: %i | rho: %.1f | fraction: %.2f" % (N, rho, f))
+    print("Box: %s" % str(L))
 
     NA = int(f * N)
     NB = N - NA
     names = [1] * NA + [2] * NB
     xyz = np.random.rand(N, 3) * L
+    if args["--loc"]:
+        xyz[:NA, 0] = np.random.rand(NA) * f * L[0]
+        xyz[NA:, 0] = np.random.rand(NB) * (1 - f) * L[0] + f * L[0]
 
     header = header2str(N, L)
     final_string = header + \
