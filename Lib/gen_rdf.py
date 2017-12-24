@@ -20,7 +20,7 @@ import numpy as np
 from numpy import pi
 import glob, sys, time
 from docopt import docopt
-from Fcore.f_rdf import f_rdf
+from Fcore.f_rdf2 import f_rdf2
 from dlms_lib import read_xyzfile2
 
 
@@ -72,7 +72,7 @@ def guess_box_size(frames):
     for i in range(Ntf):
         nm, xyz = read_xyzfile2(frames[i])
         Ltrial[i] = np.array([np.round(np.max(xyz[:, i]) - \
-                np.min(xyz[:, i]), 2) for i in range(1, 4)])
+                np.min(xyz[:, i]), 2) for i in range(3)])
     return np.max(Ltrial, 0)
 
 
@@ -129,7 +129,7 @@ if __name__ == "__main__":
     if args["--L"]:
         s = args["--L"].split()
         if len(s) == 1:
-            Ls = float(s[0]) * np.ones(3)
+            Ls = float(eval(s[0])) * np.ones(3)
         elif len(s) == 3:
             Ls = np.array(s).astype(float)
         else:
@@ -145,13 +145,13 @@ if __name__ == "__main__":
     atom_types = [int(i) for i in args["--bt"].split()]
     if len(atom_types) > 2:
         sys.exit("Two atom at most types allowed.")
-    xyz_types = set(read_xyzfile(frames[0])[:, 0])
+    xyz_types = set(read_xyzfile2(frames[0])[0])
     if not set(atom_types).issubset(xyz_types):
         sys.exit("Requested atom types not present in the xyz files.")
 
     print("===== Calculating rdf =====")
-    print("Atoms: %s | Bins: %i | rc %.2f | xyz frames: %i" % \
-         (atom_types, Nb, rc, Nf))
+    print("Atoms: %s | Bins: %i | xyz frames: %i" % \
+         (atom_types, Nb, Nf))
     print("Box: %s" % Ls)
 
     ti = time.time()
