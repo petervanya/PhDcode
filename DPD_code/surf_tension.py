@@ -2,21 +2,20 @@
 """Usage: 
     surf_tension.py <frames> <coord> [--bins <nb>]
 
-Compute surface tension from Kirkwood relation.
+Compute surface tension using Irving-Kirkwood method.
+
+Arguments:
+    <coord>      Coordinate along which to calculate s.t. 'x', 'y', 'z'
 
 Options:
-    --bins <nb>    Number of bins [default: 10]
+    --bins <nb>  Number of bins [default: 50]
 
-pv278@cam.ac.uk, 10/03/17
+pv278@cam.ac.uk, 13/12/17
 """
 import numpy as np
-from numpy.linalg import norm, pinv
-from math import sqrt
-from numba import jit, float64, int64
 from scipy.integrate import simps
 import sys, time, glob
 from docopt import docopt
-from link_cells import LinkCells
 from dlms_lib import read_xyzfile2
 
 
@@ -28,157 +27,112 @@ def parse_control():
     except FileNotFoundError:
         sys.exit("CONTROL file not found in the current dir.")
     for line in f:
-        if "manybody cutoff" in line.lower():
-            rd = float(line.split()[-1])
         if "volume" in line.lower():
             tmp = line.split()
             if len(tmp) == 2:
                 L = float(tmp[-1])**(1/3)
-                L = np.array([L, L, L])
+                L = np.ones(3) * L
             elif len(tmp) == 4:
                 L = np.array(list(map(float, tmp[1:4])))
-    return L, rd
+    return L
 
 
 def parse_field():
-    """Extract coefficients from the field file.
-    Assume rc = 1.0"""
+    """Extract coefficients from the field file. Assume rc = 1.0"""
     try:
         f = open("FIELD", "r").readlines()
     except FileNotFoundError:
         sys.exit("FIELD file not found in the current dir.")
     for line in range(len(f)):
         if "SPECIES" in f[line].upper():
-            Nb = int(f[line].split()[-1])
-            sp_lines = f[line+1 : line+Nb+1]
+            Nbt = int(f[line].split()[-1])
+            sp_lines = f[line+1 : line+Nbt+1]
         if "INTERACTIONS" in f[line].upper():
             Ni = int(f[line].split()[-1])
-            int_lines = f[line+1 : line+Ni+1]
+            ip_lines = f[line+1 : line+Ni+1]
 
     sp = {}       # species
     sp_num = {}   # species dict with numbers
-    for i in range(Nb):
+    for i in range(Nbt):
         tmp = sp_lines[i].split()
         sp[tmp[0]] = i
         sp_num[tmp[0]] = int(tmp[3])
 
-    int_d = {}    # interaction dict
+    ip_d = {}    # interaction dict
     for i in range(Ni):
-        tmp = int_lines[i].split()
-        if tmp[1] != "dpd":
-            sys.exit("Interaction type: %s. Should be: dpd." % tmp[1])
-        int_d[tmp[0] + " " + tmp[1]] = tmp[3]
+        tmp = ip_lines[i].split()
+        if tmp[2].lower() != "dpd":
+            sys.exit("Interaction type should be dpd.")
+        ip_d[tmp[0] + " " + tmp[1]] = tmp[3:5]
 
-    int_mat = np.zeros((Nb, Nb))  # interaction matrix
-    for k, v in int_d.items():
+    ip_A = np.zeros((Nbt, Nbt))  # interaction matrix
+    for k, v in ip_d.items():
         i, j = [sp[l] for l in k.split()]
-        int_mat[i, j] = v
-        int_mat[j, i] = v
+        ip_A[i, j] = v[0]
+        ip_A[j, i] = v[0]
 
-    return int_mat
-
-
-@jit(float64(float64[:]), nopython=True)
-def norm_numba(r):
-    rn = 0.0
-    for ri in r:
-        rn += ri * ri
-    return sqrt(rn)
+    return ip_A
 
 
-@jit(float64(float64, float64, float64), nopython=True)
-def force(nr, a, rc=1.0):
-    """
-    nr: norm of vector
-    a: interaction parameter
-    rc: cutoff
-    """
-    return a * (1 - nr / rc) if nr < rc else 0.0
+def perodic_1D_difference(v1, v2, Lu):
+    outer_prod = np.subtract.outer(v1, v2)
+    outer_prod = np.where((np.abs(outer_prod) > Lu / 2), \
+            (Lu - np.abs(outer_prod)) * -1 * np.sign(outer_prod), \
+            outer_prod)
+    return outer_prod
 
 
-@jit(float64[:](float64[:], float64, float64), nopython=True)
-def force_vec(r, a, rc=1.0):
-    """
-    r: 3d vector
-    a: interaction parameter
-    rc: cutoff
-    """
-#    nr = norm_numba(r)
-#    return a * (1 - nr / rc) * r / nr if nr < rc else 0.0
-    nr = 0.0
-    for ri in r:
-        nr += ri * ri
-    nr = sqrt(nr)
-    F = np.zeros(3)
-    for i in range(3):
-        F[i] = a * (1 - nr / rc) * r[i] / nr if nr < rc else 0.0
-    return F
+def distance_matrix(xyz1, xyz2, L):
+    """need to get in the periodic boundary"""
+    x = perodic_1D_difference(xyz1[:, 0], xyz2[:, 0], L[0])
+    y = perodic_1D_difference(xyz1[:, 1], xyz2[:, 1], L[1])
+    z = perodic_1D_difference(xyz1[:, 2], xyz2[:, 2], L[2])
+    return x, y, z
 
 
-@jit(float64(float64), nopython=True)
-def theta(x):
-    return 1.0 if x > 0.0 else 0.0
+def boxsplit(xyz, n, ui, u, L, rc=1.0):
+    """ n: list of bead numbers"""
+    if (ui >= rc) and (ui <= (L[u] - rc)):
+        xyz1 = xyz[np.logical_and((xyz[:, u] > ui - rc), (xyz[:, u] < ui))]
+        xyz2 = xyz[np.logical_and((xyz[:, u] < ui + rc), (xyz[:, u] > ui))]
+        n1 = n[np.logical_and((xyz[:, u] > ui - rc), (xyz[:, u] < ui))]
+        n2 = n[np.logical_and((xyz[:, u] < ui + rc), (xyz[:, u] > ui))]
+    elif ui < rc:
+        xyz1 = xyz[np.logical_or((xyz[:, u] > L[u] - rc), (xyz[:, u] < ui))]
+        xyz2 = xyz[np.logical_and((xyz[:, u] < ui + rc), (xyz[:, u] > ui))]
+        n1 = n[np.logical_or((xyz[:, u] > L[u] - rc), (xyz[:, u] < ui))]
+        n2 = n[np.logical_and((xyz[:, u] < ui + rc), (xyz[:, u] > ui))]
+    elif ui > L[u] - rc:
+        xyz1 = xyz[np.logical_and((xyz[:, u] > ui - rc), (xyz[:, u] < ui))]
+        xyz2 = xyz[np.logical_or((xyz[:, u] < rc), (xyz[:, u] > ui))]
+        n1 = n[np.logical_and((xyz[:, u] > ui - rc), (xyz[:, u] < ui))]
+        n2 = n[np.logical_or((xyz[:, u] < rc), (xyz[:, u] > ui))]
+    return n1, xyz1, n2, xyz2
 
 
-@jit(float64(float64, float64, float64), nopython=True)
-def ksi(z, zi, zj):
-    """Ksi function from Ghoufi, PRE, 2010
-    acting as a delta function."""
-    zij = zj - zi
-    return theta((z - zi) / zij) * theta((zj - z) / zij) / abs(zij)
+def pressure_tensor(nm, xyz, ip, Ls, u, Nb, rc=1.0):
+    us = np.linspace(0, Ls[u], Nb+1)[:-1]
+    P = np.zeros((Nb, 3))
+    n = np.arange(len(xyz))
 
+    for nb in range(Nb):
+        nl, xyzl, nr, xyzr = boxsplit(xyz, n, us[nb], u, Ls)
+        dms = distance_matrix(xyzl, xyzr, Ls)
+        r = np.sqrt(dms[0]**2 + dms[1]**2 + dms[2]**2)
+        
+        Amat = np.array([[ip[nm[i], nm[j]] for i in nl] for j in nr]).T
 
-@jit(float64(float64, float64, float64), nopython=True)
-def ksi2(z, zi, zj):
-    """Ksi function derived by Mathematica based on Ghoufi, PRE, 2010"""
-    return (theta(z - zj) - theta(z - zi)) / (zi - zj)
+        F = Amat * (1 - r) * (r < 1) * (r > 0)
 
-
-def add_images(xyz, Ls, u, rc=1.0):
-    """Transfer images from one end of the box to the other,
-    along a coord u in [0, 1, 2]"""
-    xyz_low = xyz[xyz[:, u] < rc]
-    xyz_low[:, u] += Ls[u]
-    xyz_high = xyz[xyz[:, u] > Ls[u] - rc]
-    xyz_high[:, u] += Ls[u]
-    return np.r_[xyz, xyz_low, xyz_high]
-
-
-def pressure_inhomo(names, xyz, coeffs, box, u, Nbins, rc=1.0):
-    """
-    Compute pressure along a coordinate u in [0, 1, 2].
-    * Nbins: number of bins
-    """
-    L = np.diag(box)
-    V = np.prod(L)
-    inv_box = pinv(box)
-
-#    Nx = int(max(L // rc))
-#    lc = LinkCells(L, Nx)
-#    lc.cell_pairs()
-#    lc.allocate_atoms(xyz)
-    G, Gn = np.zeros(3), np.zeros(3)
-    dr, drn = np.zeros(3), np.zeros(3)
-
-    up = list(set(range(3)).difference([u])) # coords perp. to u
-    A = np.prod(L[up])                       # cross-sectional area
-    du = L[u] / Nbins
-    us = np.arange(du / 2, L[u], du)
-    P = np.zeros((Nbins, 3))
-
-    for ni in range(Nbins):
-        nums = np.arange(len(xyz))
-        nums = nums[(xyz[:, u] > us[ni] - rc / 2) & (xyz[:, u] < us[ni] + rc / 2)]
-        Nl = len(nums)
-        for i in range(Nl):
-            for j in range(i):
-                dr = xyz[i] - xyz[j]
-                G = inv_box @ dr
-                Gn = G - np.round(G)
-                drn = box @ Gn
-#                F = force_vec(drn, coeffs[names[i], names[j]], rc)    # DPD
-                P[ni, :] += drn * F * ksi(us[ni], xyz[i, u], xyz[j, u])
-    return P / A
+        Fx = F * dms[0] / r
+        Fy = F * dms[1] / r
+        Fz = F * dms[2] / r
+	
+        p_xx = np.sum(dms[0] / np.abs(dms[u]) * Fx)
+        p_yy = np.sum(dms[1] / np.abs(dms[u]) * Fy)
+        p_zz = np.sum(dms[2] / np.abs(dms[u]) * Fz)
+        P[nb] = [p_xx, p_yy, p_zz]
+    return P
 
 
 if __name__ == "__main__":
@@ -187,44 +141,41 @@ if __name__ == "__main__":
     Nf = len(frames)
     if Nf == 0:
         sys.exit("No frames captured.")
-    coeffs = parse_field()
-    Ls, rd = parse_control()
-    box = np.diag(Ls)
-    V = np.prod(Ls)
+    Ls = parse_control()
+    ip = parse_field()
 
-    u = int(args["<coord>"])
-    Nbins = int(args["--bins"])
-    up = list(set(range(3)).difference([u])) # coords perp. to u
-    if u not in range(3):
-        sys.exit("Coordinate must be in [0, 1, 2].")
-    du = Ls[u] / Nbins
-    us = np.arange(du / 2, Ls[u], du)
-    P, Pi = np.zeros((Nbins, 3)), np.zeros((Nbins, 3))
-    Pt = np.zeros(Nbins)
-    gamma, gammai = 0.0, 0.0
+    coord = args["<coord>"]
+    coords = {"x": 0, "y": 1, "z": 2}
+    if coord not in coords.keys():
+        sys.exit("Coordinate must be in %s." % list(coords.keys()))
+    u = coords[coord]
+    Nb = int(args["--bins"])
+    us = np.linspace(0, Ls[u], Nb+1)[:-1]
+    uperp = list(set(range(3)).difference([u])) # coords perp. to u
+    Area = np.prod(Ls[uperp])                   # cross-sectional area
 
-    print("===== Surface tension =====")
-    print("Pressure along coordinate: %i" % u)
-    print("Box: %s" % Ls)
-    print("Coeffs:\n", coeffs)
+    P = np.zeros((Nb, 3))
+    Pt = np.zeros(Nb)
+    gammas = np.zeros(Nf)
+
+    print("===== Surface tension for DPD =====")
+    print("Frames: %i | Box: %s" % (Nf, Ls))
+    print("Nu: %i | du: %.4f" % (len(us), Ls[u] / len(us)))
+    print("Coeffs:\n", ip)
 
     ti = time.time()
-    for frame in frames:
-        print("Computing frame %s... " % frame, end="")
-        names, xyz = read_xyzfile2(frame)
-        names = names.astype(int) - 1
-        xyz = add_images(xyz, Ls, u)
-        Pi = pressure_inhomo(names, xyz, coeffs, box, u, Nbins)
-        gammai = simps(Pi[:, u] - (Pi[:, up[0]] + Pi[:, up[1]]) / 2.0, us)
-        gamma += gammai / Nf
-        P += Pi / Nf
-        print("Gamma:", gammai)
-    tf = time.time()
-    print("Time: %.2f s." % (tf - ti))
+    for j in range(Nf):
+        nm, xyz = read_xyzfile2(frames[j])
+        nm -= 1
+        Pi = pressure_tensor(nm, xyz, ip, Ls, u, Nb)
+        Pti = (Pi[:, u] - (Pi[:, uperp[0]] + Pi[:, uperp[1]]) / 2.0) / Area
+        Pt += Pti / Nf
+        gammas[j] = simps(Pti, us) / 2.0
+        print(frames[j], " | Gamma = ", gammas[j])
 
-#    print(P)
-    Pt = P[:, u] - (P[:, up[0]] + P[:, up[1]]) / 2.0
+    print("Time: %.2f s." % (time.time() - ti))
     np.savetxt("pressure.out", np.c_[us, Pt])
-    print("Surface tension:", gamma)
+    gamma_avg = simps(Pt, us) / 2.0
+    print("Final gamma: %f | Std: %f" % (gamma_avg, np.std(gammas)))
 
 
