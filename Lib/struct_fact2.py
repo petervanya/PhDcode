@@ -54,7 +54,7 @@ if __name__ == "__main__":
         rho = rho * Nm / rc**3
         r = r * rc
         print("Using SI units")
-        print("Nm: %i | rc: %.2f nm | rho: %.2f 1/nm^3" % (Nm, rc, rho))
+        print("Nm: %i | rc: %.3f nm | rho: %.2f 1/nm^3" % (Nm, rc, rho))
 
     N = len(r)
     dr = r[1] - r[0]

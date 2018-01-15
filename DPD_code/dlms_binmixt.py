@@ -43,7 +43,7 @@ if __name__ == "__main__":
     if f < 0.0 or f > 1.0:
         sys.exit("Fraction f of A beads must be between 0 and 1.")
 
-    print("===== DPD binary mixture =====")
+    print("===== DPD binary mixture for DL_MESO =====")
     print("N: %i | rho: %.1f | fraction: %.2f" % (N, rho, f))
     print("Box: %s" % str(L))
 
@@ -76,7 +76,6 @@ if __name__ == "__main__":
     open(fname, "w").write(conf_str)
     print("Initial configuration written in %s" % fname)
 
-    # ===== generate FIELD file with bead species and interactions
     rc, gamma = 1.0, float(args["--gamma"])
     a_ij = {}
     a_ij["A A"] = [aii, rc, gamma]

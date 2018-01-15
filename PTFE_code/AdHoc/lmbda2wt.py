@@ -2,6 +2,9 @@
 """
 Convert water uptake lmbda to water content as a percentage.
 
+Formula for Wu   : wt = 1 / (1 + 6 Nbm / (lmbda - 3))
+Formula for Yamam: wt = 1 / (1 + 4 Nbm / lmbda)
+
 03/05/17
 """
 
