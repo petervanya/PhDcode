@@ -39,7 +39,7 @@ if __name__ == "__main__":
         L = np.array(s).astype(float)
     else:
         sys.exit("<L> should have size 1 or 3.")
-    N = int(rho * np.prod(L)) // 10 * 10     # round to 10
+    N = int(rho * np.prod(L))
     if f < 0.0 or f > 1.0:
         sys.exit("Fraction f of A beads must be between 0 and 1.")
 
