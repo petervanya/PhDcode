@@ -2,7 +2,6 @@
 """Usage:
     dlms_mdpd_homo.py [--L <L> --rho <rho> --xyz]
                       [--A <A> --B <B> --rd <rd>]
-                      [--dt <dt> --steps <ns> --traj-after <ta>]
 
 Generate a many-body DPD homogenous mixture.
 CONFIG, FIELD and CONTROL files.
@@ -14,9 +13,6 @@ Options:
     --A <A>             Interaction parameter A [default: 25]
     --B <B>             Interaction parameter B [default: 25]
     --rd <rd>           Second cutoff, less than 1 [default: 0.75]
-    --dt <dt>           Time step [default: 0.03]
-    --steps <ns>        Total number of steps [default: 80000]
-    --traj-after <ta>   Start taking frames after n steps [default: 70000]
     --xyz               Create xyz file
 
 pv278@cam.ac.uk, 28/10/16
@@ -31,14 +27,20 @@ from docopt import docopt
 if __name__ == "__main__":
     args = docopt(__doc__)
     np.random.seed(1234)
-    L = float(args["--L"])
     rho = float(args["--rho"])
     A = float(args["--A"])
     B = float(args["--B"])
     rd = float(args["--rd"])
+    s = args["--L"].split()
+    if len(s) == 1:
+        L = float(s[0]) * np.ones(3)
+    elif len(s) == 3:
+        L = np.array(s).astype(float)
+    else:
+        sys.exit("<L> should have size 1 or 3.")
     if rd < 0.0 or rd > 1.0:
         sys.exit("Enter rd between 0 and 1.")
-    N = int(rho * L**3) // 10 * 10     # round to 10
+    N = int(rho * L**3)
     print("===== MDPD homogenous mixture =====")
     print("N: %i | L: %.1f | rho: %.1f" % (N, L, rho))
     print("Interaction. A: %.2f | B: %.2f | rd: %.2f" % (A, B, rd))
@@ -66,14 +68,6 @@ if __name__ == "__main__":
                    "close\n"
     open("FIELD", "w").write(field_string)
     print("FIELD file saved.")
-
-    # ==== CONTROL file
-    steps = int(args["--steps"])
-    ta = int(args["--traj-after"])
-    if ta > steps:
-        sys.exit("<ta> must be less than number of steps.")
-    dt = float(args["--dt"])
-    gen_control(L, dt, steps, traj_after=ta, method="mdpd", rd=rd)
 
     if args["--xyz"]:
         fname = "CONFIG_INIT.xyz"
