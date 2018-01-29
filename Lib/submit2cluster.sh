@@ -48,6 +48,7 @@ export g09root GAUSS_SCRDIR GAUSS_EXEDIR
 
 filedir=$(dirname "$filepath")
 filename=$(basename "$filepath")
+noextname=${filename%.*}
 cd $filedir
 
 if [ "$1" == "gaussian" ]; then
@@ -58,7 +59,7 @@ elif [ "$1" == "lammps" ]; then
     echo "Running LAMMPS."
     progpath="/home/pv278/sw/bin/lmp_mpi"
     mpi_run="/opt/openmpi/bin/mpirun"
-    time $mpi_run -np $Ncores $progpath <$filepath
+    time $mpi_run -np $Ncores $progpath <$filepath >$filedir/$noextname.out
 elif [ "$1" == "dlms" ]; then
     echo "Running dl_meso_mpi."
     progpath="/home/pv278/sw/bin/dl_meso_mpi"
