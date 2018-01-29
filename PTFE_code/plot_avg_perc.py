@@ -18,7 +18,7 @@ import glob, sys
 from docopt import docopt
 import pandas as pd
 
-matplotlib.rcParams.update({'font.size': 24})
+matplotlib.rcParams.update({'font.size': 36})
 r_DPD = 8.14e-10
 
 
@@ -54,10 +54,11 @@ def plot_el(df, el, dim, widths, lmbdas, figfmt):
 
     plt.grid()
     if dim == "2d":
-        plt.legend(loc=4)
+        plt.legend(loc=4, prop={'size': 24})
     else:
-        plt.legend(loc=2)
-    plt.title(dim.upper() + " percolation, thin film, " + el.lower())
+        plt.legend(loc=2, prop={'size': 24})
+#    plt.title(dim.upper() + " percolation, thin film, " + el.lower())
+    plt.title(dim.upper() + " percolation, " + el.lower())
     plotname = "Pinf_%s_avg_%s.%s" % (dim, el.lower(), figfmt)
     plt.savefig(plotname, bbox_inches='tight')
 

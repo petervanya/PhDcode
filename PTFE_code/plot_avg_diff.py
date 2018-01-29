@@ -18,9 +18,10 @@ import matplotlib
 import glob, sys
 from docopt import docopt
 
-matplotlib.rcParams.update({'font.size': 24})
+matplotlib.rcParams.update({'font.size': 36})
 #D0 = 1.752226e-08
-D0 = 2.068688
+#D0 = 2.068688
+D0 = 0.3
 
 
 def plot_el(df, el, D, widths, lmbdas, figfmt):
@@ -43,8 +44,9 @@ def plot_el(df, el, D, widths, lmbdas, figfmt):
 
     plt.xlim([lmbdas[0]-1, lmbdas[-1]+1])
     plt.xticks([4, 8, 12, 16, 20, 24])
-    plt.ylim([0, 0.2])
-    plt.yticks([0, 0.05, 0.10, 0.15, 0.20])
+    plt.ylim([0, 1.0]) #0.2])
+    plt.yticks(np.linspace(0, 1, 6))
+#    plt.yticks([0, 0.05, 0.10, 0.15, 0.20])
     plt.xlabel("$\lambda$")
 #    ylbl = {"Dx": "Normal", "Dyz": "Parallel", "D3d": "3d"}
 #    plt.ylabel("$D_{\mathrm{%s}} \; (10^{-9} \; \mathrm{m^2/s}) $" % ylbl[D])
@@ -52,7 +54,7 @@ def plot_el(df, el, D, widths, lmbdas, figfmt):
     plt.ylabel("$D_{\mathrm{%s}} \,/\, D_0 $" % ylbl[D])
 
     plt.grid()
-    plt.legend(loc=2)
+    plt.legend(loc="best", prop={'size': 24})
     ttl = {"Dx": "Normal", "Dyz": "Parallel", "D3d": "3D"}
     plt.title(ttl[D] + ", " + el.lower())
     plotname = "%s_avg_%s.%s" % (D, el.lower(), figfmt)

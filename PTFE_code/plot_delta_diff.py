@@ -17,7 +17,7 @@ import matplotlib
 import glob, sys
 from docopt import docopt
 
-matplotlib.rcParams.update({'font.size': 24})
+matplotlib.rcParams.update({'font.size': 36})
 
 
 def plot_el(df, el, widths, lmbdas, figfmt):
@@ -55,7 +55,7 @@ def plot_el(df, el, widths, lmbdas, figfmt):
     plt.ylabel("($D_{\|} - D_{\\bot}) / D_{\|}$")
 
     plt.grid()
-    plt.legend(loc="best")
+    plt.legend(loc="best", prop={'size': 24})
     plt.title("Anisotropy, " + el.lower())
     plotname = "delta_%s.%s" % (el.lower(), figfmt)
     plt.savefig(plotname, bbox_inches='tight')
