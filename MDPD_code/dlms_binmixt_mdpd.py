@@ -42,12 +42,12 @@ if __name__ == "__main__":
     dA = float(args["--dA"])
     B = float(args["--B"])
     dB = float(args["--dB"])
-    N = int(rho * np.prod(L)) // 10 * 10     # round to 10
+    N = int(rho * np.prod(L))
     if f < 0.0 or f > 1.0:
         sys.exit("Fraction f of A beads must be between 0 and 1.")
 
     print("===== Many-body DPD binary mixture =====")
-    print("N: %i | rho: %.1f | fraction: %.2f" % (N, rho, f))
+    print("N: %i | rho: %.2f | fraction: %.2f" % (N, rho, f))
     print("Box:", L)
 
     NA = int(f * N)
@@ -66,7 +66,6 @@ if __name__ == "__main__":
         levcfg = 1
     save_config("CONFIG", names, xyz, np.diag(L))
 
-    # ===== generate FIELD file with bead species and interactions
     rc, gamma = 1.0, 4.5
     a_ij = {}
     a_ij["A A"] = [A, B, 0, 0, 0, rc, gamma]
