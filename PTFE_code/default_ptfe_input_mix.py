@@ -100,7 +100,7 @@ s += """
 s += "seed:              %i\n" % seed
 s += "method:            %i\n" % method
 
-s += "box-size:          %.0f        # DPD units, 1 = 8.14 AA\n" % L
+s += "box-size:          %.6f        # DPD units, 1 = 8.14 AA\n" % L
 s += "temperature:       %.1f       # Units of kB T\n" % T
 s += "mono-per-chain:    %i\n" % Nmc
 s += "mono-beads:        %s\n" % mono_beads

@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """Usage:
-    fit_rho_A_B.py <frame> [--iter <it> --plot_A_cut --plot_B_cut]
+    fit_rho_A_B.py <frame> <f> [--iter <it> --plot_A_cut --plot_B_cut]
 
 Fit density as a function of A and B via curve_fit.
 
@@ -22,9 +22,16 @@ Bcut = {0.55: 20, 0.65: 15, 0.75: 10, 0.85: 10}
 ymax = {0.55: 30, 0.65: 20, 0.75: 12, 0.85: 12}
 
 
-def func(X, c1, c2, c3, c4):
+def func1(X, c1, c2, c3, c4):
+    """c1 + c2 * (-A) * (B - c3)**c4"""
     A, B = X
     return c1 + c2 * (-A) * (B - c3)**c4
+
+
+def func2(X, c1, c2, c3):
+    """c1 + c2 * (-A) * B**c3"""
+    A, B = X
+    return c1 + c2 * (-A) * B**c3
 
 
 def plot_B_cut(cut_df, Bval, popt):
@@ -77,14 +84,26 @@ df = df[df.B > Bcut[rd]]  # do not take too small B values
 XA = df.A.values
 XB = df.B.values
 rho = df.rho.values
+f = int(args["<f>"])
+Nf = 2
+if f not in range(1, Nf+1):
+    sys.exit("Choose function <f> from %s." % list(range(1, Nf+1)))
 
 print("===== Fitting MDPD density w.r.t. A, B =====")
-print("rho(A,B) = c1 + c2 (-A) * (B - c3)**c4")
-guess = [3.0, 1.0, 1.0, -0.8]
+print("Function choice: %i" % f)
+if f == 1:
+    func = func1
+    guess = [3.0, 1.0, 1.0, -0.8]
+elif f == 2:
+    func = func2
+    guess = [3.0, 1.0, -0.8]
+
+print(func.__doc__)
 popt, pcov = curve_fit(func, (XA, XB), rho, p0=guess, maxfev=Nit)
-print("Guess, params, errors, ratios")
+print("Guess, params, std")
 np.set_printoptions(precision=6, suppress=True)
-print(np.c_[guess, popt, np.diag(pcov), np.abs(np.diag(pcov) / popt)])
+print(np.c_[guess, popt, np.sqrt(np.diag(pcov))].T)
+#print(np.c_[guess, popt, np.diag(pcov), np.abs(np.diag(pcov) / popt)])
 
 As = np.array(sorted(list(set(df.A))))
 Bs = np.array(sorted(list(set(df.B))))

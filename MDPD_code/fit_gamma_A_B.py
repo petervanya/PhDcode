@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """Usage:
-    fit_gamma_A_B.py <frame> <func> [--iter <it> --plot_A_cut --plot_B_cut]
+    fit_gamma_A_B.py <frame> <f> [--iter <it> --plot_A_cut --plot_B_cut]
 
 Fit surface tension as a function of A and B via curve_fit.
 
@@ -19,7 +19,7 @@ from docopt import docopt
 
 
 Bcut = {0.55: 20, 0.65: 15, 0.75: 10, 0.85: 10}
-ymax = {0.55: 150, 0.65: 120, 0.75: 120, 0.85: 120}
+ymax = {0.55: 150, 0.65: 120, 0.75: 70, 0.85: 50}
 
 
 def func1(X, c1, c2, c3, c4, c5):
@@ -70,6 +70,24 @@ def func8(X, c1, c2, c3, c4):
     return (c1 * A**2 + c2 * A) * np.exp(-c3 * B + c4)
 
 
+def func9(X, c1, c2, c3):
+    """(c1 * A**2 + c2 * A) * B**c3"""
+    A, B = X
+    return (c1 * A**2 + c2 * A) * B**c3
+
+
+def func10(X, c1, c2, c3, c4):
+    """(c1 * A**2 + c2 * A + c3) * B**c4"""
+    A, B = X
+    return (c1 * A**2 + c2 * A + c3) * B**c4
+
+
+def func11(X, c1, c2, c3, c4):
+    """(c1 * A**2 + c2 * A) * (B + c3 * A)**c4"""
+    A, B = X
+    return (c1 * A**2 + c2 * A) * (B + c3 * A)**c4
+
+
 def plot_B_cut(cut_df, Bval, popt):
     plt.clf()
     gammafit = np.array([func((xi, Bval), *popt) for xi in cut_df.A])
@@ -81,7 +99,7 @@ def plot_B_cut(cut_df, Bval, popt):
     plt.xlabel("$A$")
     plt.ylabel("$\\gamma$")
     plt.title("Fixed $B$ = %s" % Bval)
-    figname = "fit_gamma_fixed_B%i.png" % Bval
+    figname = "fit_gamma_fixed_B_%i.png" % Bval
     plt.savefig(figname, bbox_inches="tight")
     print("Plot saved in %s." % figname)
 
@@ -97,7 +115,7 @@ def plot_A_cut(cut_df, Aval, popt):
     plt.xlabel("$B$")
     plt.ylabel("$\\gamma$")
     plt.title("Fixed $A$ = %s" % Aval)
-    figname = "fit_gamma_fixed_A%i.png" % Aval
+    figname = "fit_gamma_fixed_A_%i.png" % Aval
     plt.savefig(figname, bbox_inches="tight")
     print("Plot saved in %s." % figname)
 
@@ -120,12 +138,15 @@ df = df[df.B > Bcut[rd]]  # do not take too small B values
 XA = df.A.values
 XB = df.B.values
 gamma = df.gamma.values
-f = int(args["<func>"])
-Nf = 8
+f = int(args["<f>"])
+Nf = 11
+print(Nf)
 if f not in range(1, Nf+1):
-    sys.exit("Choose function <f> from %s." % range(1, Nf+1))
+    sys.exit("Choose function <f> from %s." % list(range(1, Nf+1)))
+
 
 print("===== Fitting MDPD surface tension w.r.t. A, B =====")
+print("Function choice: %i" % f)
 
 if f == 1:
     func = func1
@@ -138,7 +159,7 @@ elif f == 3:
     guess = [0.06, -0.2, -10.0, 5.0, -0.8, 0.1]
 elif f == 4:
     func = func4
-    guess = [0.06, -0.2, 5.0, -0.8]
+    guess = [0.06, -0.2, 10.0, -0.8]
 elif f == 5:
     func = func5
     guess = [0.06, -0.2, -10.0, -0.8]
@@ -151,12 +172,22 @@ if f == 7:
 if f == 8:
     func = func8
     guess = [0.06, -0.2, 1.0, 1.0]
+if f == 9:
+    func = func9
+    guess = [0.06, -0.2, 1.0]
+if f == 10:
+    func = func10
+    guess = [0.06, -0.2, 1.0, 1.0]
+if f == 11:
+    func = func11
+    guess = [0.06, -0.2, -1.0, 1.0]
 
 print(func.__doc__)
 popt, pcov = curve_fit(func, (XA, XB), gamma, p0=guess, maxfev=Nit)
-print("Guess, params, errors, ratios")
+print("Guess, params, std")
 np.set_printoptions(precision=6, suppress=True)
-print(np.c_[guess, popt, np.diag(pcov), np.abs(np.diag(pcov) / popt)])
+print(np.c_[guess, popt, np.sqrt(np.diag(pcov))].T)
+#        np.abs(np.sqrt(np.diag(pcov)) / popt)].T)
 
 As = np.array(sorted(list(set(df.A))))
 Bs = np.array(sorted(list(set(df.B))))

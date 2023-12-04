@@ -145,15 +145,103 @@ def mol2str(molname, Nmols, bead_list, bond_mat, bond_type="harm", \
 
 
 # ===== CONFIG file
-def save_config(fname, names, xyz, box, imcon=0):
-    """Save positions into file
+def read_config(conffile, nafion=False, shift=False):
+    """
+    Read CONFIG file. 
+
+    Options
+    =======
+    * nafion: use bead ordering 'ABCWEP'
+    * shift: shift all beads by half-box
+    """
+    try:
+        conf_str = open(conffile, "r").readlines()
+    except FileNotFoundError:
+        sys.exit("File not found: %s." % conffile)
+
+    levcfg, imcon = (int(s) for s in conf_str[1].split())
+    if imcon == 0:     # no box coordinates
+        conf_str = np.array(conf_str[2:])
+    else:              # skip over box coordinates
+        box = np.array([line.split() for line in conf_str[2:5]]).astype(float)
+        L = np.diag(box)
+        print("System size:", L)
+        conf_str = np.array(conf_str[5:])
+
+    print("Levcfg = %i" % levcfg)
+    if levcfg == 0:
+        N = len(conf_str) // 2
+    elif levcfg == 1:
+        print("File contains velocities.")
+        N = len(conf_str) // 3
+    elif levcfg >= 2:
+        print("File contains velocities and forces.")
+        N = len(conf_str) // 4
+    
+    mask = np.arange(N) * (levcfg + 2)
+    names = [conf_str[i].split()[0] for i in mask]
+    names_dict = {}
+
+    if nafion:
+        print("Nafion bead order 'ABCWEP' used.")
+        for i, bt in enumerate("ABCWEP"):
+            names_dict[bt] = i + 1
+    else:
+        for i in enumerate(sorted(set(names))):   # bead types to numbers
+            names_dict[i[1]] = i[0] + 1
+
+    names = [names_dict[i] for i in names]
+
+    xyz = np.array([[float(j) for j in conf_str[i].split()] for i in mask+1])
+
+    if shift:
+        if imcon == 0:
+            L = np.array([np.round((max(xyz[:, i]) - min(xyz[:, i])), 1) \
+                    for i in range(3)])
+        xyz += L
+        xyz = xyz % L
+        print("Shifted box by", L / 2)
+
+    vel = None
+    forces = None
+
+    if levcfg == 1:
+        vel = np.array([[float(j) for j in conf_str[i].split()] \
+                for i in mask+2])
+        forces = None
+
+    if levcfg >= 2:
+        vel = np.array([[float(j) for j in conf_str[i].split()] \
+                for i in mask+2])
+        forces = np.array([[float(j) for j in conf_str[i].split()] \
+                for i in mask+3])
+
+    return names, xyz, vel, forces
+
+
+def save_config(fname, names, xyz, box=None, nafion=False):
+    """
+    Save positions into file.
+
+    Options
+    =======
     * box: matrix of form diag(Lx, Ly, Lz)
-    * imcon: include box coords (0 or 1)"""
+    * nafion: use bead ordering 'ABCWEP'
+    """
     N = len(xyz)
+    imcon = 0 if box is None else 1
     conf_str = "bla\n" + "0\t%i\n" % imcon
-    if imcon == 1:
+
+    if box is not None:
         for i in range(len(box)):
             conf_str += "%f\t%f\t%f\n" % (box[i, 0], box[i, 1], box[i, 2])
+
+    names_dict = {}
+    if nafion:
+        print("Nafion bead order 'ABCWEP' used.")
+        for i, bt in enumerate("ABCWEP"):
+            names_dict[i+1] = bt
+        names = [names_dict[i] for i in names]
 
     for i in range(N):
         conf_str += "%s        %i\n" % (names[i], i+1)

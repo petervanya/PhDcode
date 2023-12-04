@@ -17,16 +17,19 @@ import matplotlib.pyplot as plt
 from docopt import docopt
 
 
+ymax = {0.55: 150, 0.65: 120, 0.75: 70, 0.85: 50}
+
+
 def plot_B_cut(cut_df, Bval):
     plt.cla()
     plt.plot(cut_df.A, cut_df.gamma, "+-", ms=10)
     plt.xlim([-105, 0])
-    plt.ylim([0, 120])
+    plt.ylim([-1, ymax[rd]])
     plt.xlabel("$A$")
     plt.ylabel("$\gamma$")
     plt.grid()
     plt.title("$B = %s$" % Bval)
-    figname = "cut_B%i.png" % Bval
+    figname = "cut_B_%i.png" % Bval
     plt.savefig(figname, bbox_inches="tight")
     print("Plot saved in %s." % figname)
 
@@ -40,7 +43,7 @@ def plot_B_cut(cut_df, Bval):
 #            (Bval, popt[1], popt[0]))
 #    plt.ylim([-5.0, 5.0])
 #    plt.grid()
-#    figname = "log_gamma_cut_B%i.png" % Bval
+#    figname = "log_gamma_cut_B_%i.png" % Bval
 #    plt.savefig(figname, bbox_inches="tight")
 #    print("Log plot saved in %s." % figname)
 
@@ -49,12 +52,12 @@ def plot_A_cut(cut_df, Aval):
     plt.cla()
     plt.plot(cut_df.B, cut_df.gamma, "+-", ms=10)
     plt.xlim([0, 105])
-    plt.ylim([0, 120])
+    plt.ylim([-1, ymax[rd]])
     plt.xlabel("$B$")
     plt.ylabel("$\gamma$")
     plt.title("$A = %s$" % Aval)
     plt.grid()
-    figname = "cut_A%i.png" % Aval
+    figname = "cut_A_%i.png" % Aval
     plt.savefig(figname, bbox_inches="tight")
     print("Plot saved in %s." % figname)
 
@@ -68,7 +71,7 @@ def plot_A_cut(cut_df, Aval):
 #            (Aval, popt[1], popt[0]))
 #    plt.ylim([-5.0, 5.0])
 #    plt.grid()
-#    figname = "log_gamma_cut_A%i.png" % Aval
+#    figname = "log_gamma_cut_A_%i.png" % Aval
 #    plt.savefig(figname, bbox_inches="tight")
 #    print("Log plot saved in %s." % figname)
 
@@ -82,6 +85,7 @@ df.columns = ["sys", "gamma", "std"]
 df["rd"] = [float(line.split("_")[1]) for line in df.sys]
 df["A"] = [float(line.split("_")[3]) for line in df.sys]
 df["B"] = [float(line.split("_")[5]) for line in df.sys]
+rd = df.rd.values[0]
 df = df.drop("sys", 1)
 df = df[df.A < 0]
 
@@ -116,7 +120,8 @@ if args["--plot-imshow"]:
     gamma = np.zeros((M, N))
     for i, r in df2.iterrows():
         gamma[As_d[r["A"]], Bs_d[r["B"]]] = r["gamma"]
-    plt.imshow(gamma, extent=extent)
+    plt.cla()
+    plt.imshow(gamma, extent=extent, vmin=0, vmax=ymax[rd])
     plt.xlabel("$B$")
     plt.ylabel("$A$")
     plt.colorbar()
