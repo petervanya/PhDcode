@@ -33,7 +33,7 @@ if __name__ == "__main__":
     except FileNotFoundError:
         sys.exit("File not found: %s." % infile)
 
-    levcfg, imcon = (int(s) for s in conf_str[1].split())
+    levcfg, imcon, _ = (int(s) for s in conf_str[1].split())
     if imcon == 0:     # no box coordinates
         conf_str = np.array(conf_str[2:])
     else:              # skip over box coordinates
