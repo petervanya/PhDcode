@@ -121,7 +121,7 @@ if __name__ == "__main__":
         tf = time.time()
 
         outname = "profile_1d_%i_%s.out" % (bt, ax_raw)
-        np.savetxt(outname, np.vstack((r, profile)).T)
+        np.savetxt(outname, np.vstack((r, profile)).T, fmt="%.3f")
         print("Time: %.2f s." % (tf - ti))
         print("Profile saved in %s." % outname)
 
@@ -138,7 +138,7 @@ if __name__ == "__main__":
 
         profile = create_2d_profile(frames, bt, ax, nbins, D, H)
         outname = "profile_2d.out"
-        np.savetxt(outname, profile)
+        np.savetxt(outname, profile, fmt="%.3f")
         print("Profile saved in %s." % outname)
 
         plt.imshow(profile, cmap="spectral")
