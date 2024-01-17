@@ -75,10 +75,14 @@ if not os.path.isfile(config2xyz):
 
 ti = time.time()
 for i in range(Nhf-Nf+1, Nhf+1):
-    cmd = "%s %i %i %i" % (history_exe, Nc, levcfg, i)
+    # cmd = "%s %i %i %i" % (history_exe, Nc, levcfg, i)
+    cmd = f"{history_exe} -k {levcfg} -f {i}"
+    print(f"Step 1: {cmd}")
     subprocess.call(cmd, shell=True)
 
-    cmd = "%s CONFIG.out %s %s" % (config2xyz, shift, nafion)
+    # cmd = "%s CONFIG.out %s %s" % (config2xyz, shift, nafion)
+    cmd = f"{config2xyz} CONFIG {shift} {nafion}"
+    print(f"Step 2: {cmd}")
     subprocess.call(cmd, shell=True)
 
     if not os.path.isfile("CONFIG.xyz"):
